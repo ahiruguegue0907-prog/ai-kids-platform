@@ -57,8 +57,8 @@ export default function LandingPage() {
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg sm:text-xl leading-8 text-slate-600 text-balance">
             AIは一方通行じゃない。<br />
-            『問いかけるAI』で、親子で『考える』を楽しみ、未来を創る。<br />
-            そして、学校では教わらない『生き抜く力』を、今その手に。
+            『問いかけるAI』で、『考える』を楽しみ、親子で未来を創る。<br />
+            テクノロジー社会を『生き抜く力』を、今その手に。
           </p>
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link href="/signup" className="inline-flex w-full sm:w-auto items-center justify-center rounded-full bg-teal-600 px-8 py-5 text-lg font-semibold text-white shadow-md hover:bg-teal-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600 transition-all hover:scale-105 active:scale-95">
@@ -90,7 +90,8 @@ export default function LandingPage() {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-2xl text-center mb-16">
             <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-              デジタル時代の子育て、<br className="sm:hidden" />こんなモヤモヤを感じていませんか？
+              デジタル時代の子育て<br />
+              こんなモヤモヤを感じていませんか？
             </h2>
           </div>
           <div className="mx-auto max-w-5xl grid grid-cols-1 gap-8 md:grid-cols-3">
@@ -99,7 +100,11 @@ export default function LandingPage() {
                 <Tv size={28} />
               </div>
               <h3 className="text-xl font-semibold text-slate-900">受動的な動画視聴ばかり…</h3>
-              <p className="text-slate-600 leading-relaxed">YouTubeなどをダラダラ見続けてしまい、脳の発達や「自ら生み出す力」への影響が心配。</p>
+              <p className="text-slate-600 leading-relaxed">
+                YouTubeなどをダラダラ見続けてしまい<br />
+                脳の発達や「自ら生み出す力」への<br />
+                影響が心配。
+              </p>
             </div>
             <div className="relative flex flex-col gap-6 p-8 bg-white rounded-3xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
               <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-50 text-orange-500 mb-2">
@@ -107,8 +112,10 @@ export default function LandingPage() {
               </div>
               <h3 className="text-xl font-semibold text-slate-900">自分で考える力が育たない？</h3>
               <p className="text-slate-600 leading-relaxed">
-                AIやネットですぐに「正解らしきもの」が手に入る時代。<br />
-                考える前に答えを見てしまっていないか不安。
+                AIやネットですぐに<br />
+                「正解らしきもの」が手に入る時代。<br />
+                考える前に<br />
+                答えを見てしまっていないか不安。
               </p>
             </div>
             <div className="relative flex flex-col gap-6 p-8 bg-white rounded-3xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
@@ -116,7 +123,12 @@ export default function LandingPage() {
                 <ShieldAlert size={28} />
               </div>
               <h3 className="text-xl font-semibold text-slate-900">親の目が届かないリスク</h3>
-              <p className="text-slate-600 leading-relaxed">知らず知らずのうちに著作権を侵害したり、不適切な情報に触れてしまったりする「無法地帯」が怖い。</p>
+              <p className="text-slate-600 leading-relaxed">
+                知らず知らずのうちに<br />
+                著作権を侵害したり<br />
+                不適切な情報に触れてしまったりする<br />
+                「無法地帯」が怖い。
+              </p>
             </div>
           </div>
         </div>
@@ -138,10 +150,12 @@ export default function LandingPage() {
               </h2>
             </div>
             <div className="prose prose-lg prose-slate mx-auto text-slate-600">
-              <p className="lead text-xl text-slate-700 font-medium mb-8">
-                AI技術が急速に普及し、誰もが簡単に「それらしい答え」や「作品」を生み出せる時代になりました。<br />
-                しかし、私たちはAI Kids Platformを単なる「便利な学習ツール」とは考えていません。<br />
-                強力なテクノロジーの光と影を正しく理解し、未来を生き抜くための「羅針盤」となる場所です。
+              <p className="lead text-xl text-slate-700 font-medium mb-8 text-center">
+                AI技術が急速に普及し、<br />
+                誰もが簡単に「それらしい答え」や「作品」を生み出せる時代になりました。<br />
+                しかし、私たちはKids AI Platformを単なる「便利な学習ツール」とは考えていません。<br />
+                強力なテクノロジーの光と影を正しく理解し、<br />
+                未来を生き抜くための「羅針盤」となる場所です。
               </p>
               <div className="space-y-10 mt-12">
                 <div className="flex flex-col sm:flex-row gap-6">
@@ -150,7 +164,8 @@ export default function LandingPage() {
                     <h3 className="text-2xl font-bold text-slate-900 mb-3">「魔法の箱」ではなく、「考える力」を育むパートナーへ</h3>
                     <p>
                       AIを「すぐに正解をくれる魔法の箱」として使うと、人間の思考力は退化してしまいます。<br />
-                      私たちの「AIせんせい」は、あえてすぐに答えを出さず、問いかけを通じて子どもたちの「なぜ？」を引き出し、自ら考え抜く力を育てます。
+                      私たちの「AIせんせい」は、あえてすぐに答えを出さず、<br />
+                      問いかけを通じて子どもたちの「なぜ？」を引き出し、自ら考え抜く力を育てます。
                     </p>
                   </div>
                 </div>
@@ -160,7 +175,9 @@ export default function LandingPage() {
                     <h3 className="text-2xl font-bold text-slate-900 mb-3">「創る楽しさ」と「創り手への敬意」を同時に学ぶ</h3>
                     <p>
                       AIを使えば、誰でも簡単に絵や音楽を作ることができます。<br />
-                      だからこそ、ゼロから生み出す喜びを知ると同時に、「情熱をかけて作品を生み出すクリエイターへの敬意」や「デジタル倫理」を自然に学べる環境を徹底しています。
+                      だからこそ、ゼロから生み出す喜びを知ると同時に、<br />
+                      「情熱をかけて作品を生み出すクリエイターへの敬意」や<br />
+                      「デジタル倫理」を自然に学べる環境を徹底しています。
                     </p>
                   </div>
                 </div>
@@ -170,18 +187,20 @@ export default function LandingPage() {
                     <h3 className="text-2xl font-bold text-slate-900 mb-3">AIに「使われる」のではなく、「共創」する未来へ</h3>
                     <p>
                       これからの時代、AIを正しく使いこなせるかどうかで将来の選択肢は大きく変わります。<br />
-                      外部から守られた安全な空間で、情報を見極める力や法律などの「実学」を提供し、AIと人間が互いの強みを活かし合う土台を作ります。
+                      外部から守られた安全な空間で、情報を見極める力や法律などの「実学」を提供し、<br />
+                      AIと人間が互いの強みを活かし合う土台を作ります。
                     </p>
                   </div>
                 </div>
               </div>
               <div className="mt-16 pt-8 border-t border-slate-200">
                 <p className="text-lg font-medium text-slate-800 italic">
-                  「開発チーム自身も日々クリエイティブな活動に関わり、子育てに向き合う当事者だからこそ、この課題に本気で取り組んでいます。<br />
+                  「開発者自身も日々クリエイティブな活動に関わり、<br />
+                  子育てに向き合う当事者だからこそ、この課題に本気で取り組んでいます。<br />
                   子どもたちの輝く可能性をリスクから守り、無限に広げるために。<br />
                   親子の対話から始まる、はじめてのAIプラットフォームをお届けします。」
                 </p>
-                <p className="mt-4 text-right font-bold text-teal-700">— AI Kids Platform 共同創業者チーム</p>
+                <p className="mt-4 text-right font-bold text-teal-700">— SOU-A　Kids AI Platform</p>
               </div>
             </div>
           </div>
@@ -193,7 +212,10 @@ export default function LandingPage() {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-2xl text-center mb-20">
             <h2 className="text-base font-bold tracking-wider text-teal-600 uppercase">3つのコア機能</h2>
-            <p className="mt-3 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">能動的な学びを引き出す、<br />対話型AI体験</p>
+            <p className="mt-3 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+              能動的な学びを引き出す<br />
+              対話型AI体験
+            </p>
           </div>
 
           <div className="mx-auto max-w-5xl space-y-24">
@@ -209,8 +231,10 @@ export default function LandingPage() {
                   <h3 className="text-2xl sm:text-3xl font-bold text-slate-900">年齢適応型「AIせんせい」</h3>
                 </div>
                 <p className="text-lg text-slate-600 mb-8 leading-relaxed">
-                  一方的に答えを教えるのではなく、「思考を助けるツール」としてソクラテス・メソッド（問いかけ）を用います。<br />
-                  年齢に合わせた対話で「思考停止」を防ぎ、論理的思考力と問題解決能力を自然に育成します。
+                  一方的に答えを教えるのではなく、「思考を助けるツール」として<br />
+                  ソクラテス・メソッド（問いかけ）を用います。<br />
+                  年齢に合わせた対話で「思考停止」を防ぎ、<br />
+                  論理的思考力と問題解決能力を自然に育成します。
                 </p>
                 <ul className="space-y-4">
                   <li className="flex gap-3 text-slate-700 font-medium"><CheckCircle2 className="h-6 w-6 text-teal-500 shrink-0" /> 発達段階に合わせた言葉遣いと難易度調整</li>
@@ -232,8 +256,11 @@ export default function LandingPage() {
                   <h3 className="text-2xl sm:text-3xl font-bold text-slate-900">実学を学ぶ「AIロールプレイ」</h3>
                 </div>
                 <p className="text-lg text-slate-600 mb-8 leading-relaxed">
-                  お店屋さんごっこから「お金の仕組み」、そして「社会のルール（法律）」まで。<br />
-                  設定されたシナリオの中でAIと対話することで、将来のAIデバイド（格差）を乗り越えるための実践的なリテラシーを育みます。
+                  例えば、お店屋さんごっこから<br />
+                  「お金の仕組み」や「社会のルール（法律）」を学ぶなど、<br />
+                  設定されたシナリオの中でAIと対話することで、<br />
+                  将来のAIデバイド（格差）を乗り越えるための<br />
+                  実践的なリテラシーを育みます。
                 </p>
                 <ul className="space-y-4">
                   <li className="flex gap-3 text-slate-700 font-medium"><CheckCircle2 className="h-6 w-6 text-blue-500 shrink-0" /> お小遣いやお店屋さんごっこによる経済の基礎体験</li>
@@ -256,7 +283,9 @@ export default function LandingPage() {
                 </div>
                 <p className="text-lg text-slate-600 mb-8 leading-relaxed">
                   言葉を使って想像を表現し、絵本や音楽を制作。<br />
-                  ゼロから生み出す楽しさを体験すると同時に、「人間の創造性の価値」と「作り手への敬意」を忘れないデジタル倫理の基礎を体感します。
+                  ゼロから生み出す楽しさを体験すると同時に、<br />
+                  「人間の創造性の価値」と「作り手への敬意」を忘れない<br />
+                  デジタル倫理の基礎を体感します。
                 </p>
                 <ul className="space-y-4">
                   <li className="flex gap-3 text-slate-700 font-medium"><CheckCircle2 className="h-6 w-6 text-purple-500 shrink-0" /> 言葉で指示を出して安全な画像を生成（プロンプト基礎）</li>
@@ -295,7 +324,8 @@ export default function LandingPage() {
               <div>
                 <h4 className="text-xl font-semibold mb-2 text-white">完全なウォールド・ガーデン</h4>
                 <p className="text-slate-400 text-sm leading-relaxed">
-                  外部のインターネットへつながるリンクやブラウザ機能を一切排除。<br />
+                  外部のインターネットへつながるリンクや<br />
+                  ブラウザ機能を一切排除。<br />
                   安全に制御された空間内でAIと対話します。
                 </p>
               </div>
@@ -308,7 +338,8 @@ export default function LandingPage() {
                 <h4 className="text-xl font-semibold mb-2 text-white">広告完全非表示</h4>
                 <p className="text-slate-400 text-sm leading-relaxed">
                   アプリ内に広告は一切表示されません。<br />
-                  意図しない課金や、不適切な広告への誘導を根絶します。
+                  意図しない課金や、<br />
+                  不適切な広告への誘導を根絶します。
                 </p>
               </div>
             </div>
@@ -319,7 +350,8 @@ export default function LandingPage() {
               <div>
                 <h4 className="text-xl font-semibold mb-2 text-white">COPPA / プライバシー準拠</h4>
                 <p className="text-slate-400 text-sm leading-relaxed">
-                  世界最高水準の子ども向けプライバシー保護法に準拠した設計。<br />
+                  世界最高水準の<br />
+                  子ども向けプライバシー保護法に準拠した設計。<br />
                   個人情報の収集・利用を厳格に管理します。
                 </p>
               </div>
@@ -330,7 +362,10 @@ export default function LandingPage() {
               </div>
               <div>
                 <h4 className="text-xl font-semibold mb-2 text-white">保護者ダッシュボード完備</h4>
-                <p className="text-slate-400 text-sm leading-relaxed">子どもの学習進捗、AIとの対話履歴のサマリー、興味関心の傾向を保護者専用画面からいつでも確認できます。</p>
+                <p className="text-slate-400 text-sm leading-relaxed">
+                  子どもの学習進捗、AIとの対話履歴のサマリーなど、<br />
+                  興味関心の傾向を保護者専用画面からいつでも確認できます。
+                </p>
               </div>
             </div>
           </div>
@@ -351,21 +386,24 @@ export default function LandingPage() {
           </h2>
           <div className="space-y-8 text-lg sm:text-xl text-slate-700 leading-relaxed text-left sm:text-center md:px-16">
             <p>
-              私たちは、生成AIが持つ真の価値は「作業の効率化」ではなく、「想像力の拡張」にあると信じています。
+              私たちは、生成AIが持つ真の価値は「作業の効率化」ではなく、<br />
+              「想像力の拡張」にあると信じています。
             </p>
             <p>
               脳が最も柔軟に成長する未就学児〜小学生の時期に、安全で良質なAIに触れること。<br />
-              それは単なるプログラミング教育ではなく、自分の言葉で世界に働きかけ、新しい何かを生み出す喜びを知る原体験になります。
+              それは単なるプログラミング教育ではなく、自分の言葉で世界に働きかけ、<br />
+              新しい何かを生み出す喜びを知る原体験になります。
             </p>
             <div className="p-8 bg-white/60 backdrop-blur-sm rounded-2xl border border-teal-100 shadow-sm">
               <p className="font-semibold text-teal-900">
                 子どもの可能性は無制限です。<br />
-                私たちのプラットフォームが、子どもたちの「やりたい！」「知りたい！」を形にし、輝く未来を創るきっかけになれば幸いです。
+                私たちのプラットフォームが、子どもたちの「やりたい！」「知りたい！」を形にし、<br />
+                輝く未来を創るきっかけになれば幸いです。
               </p>
             </div>
           </div>
           <div className="mt-12 text-center">
-            <p className="text-sm font-bold tracking-widest text-teal-800 uppercase">AI Kids Platform 開発チーム</p>
+            <p className="text-sm font-bold tracking-widest text-teal-800 uppercase">SOU-A　Kids AI Platform 開発者より</p>
           </div>
         </div>
       </section>
