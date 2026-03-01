@@ -3,6 +3,67 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 
+// ============================================================
+// 学年グループ判定ヘルパー（9学年 → 3グループ）
+// ============================================================
+const PRESCHOOL_GRADES = ['年少（3歳）', '年中（4歳）', '年長（5歳）'];
+const LOWER_GRADES = ['小学1年生', '小学2年生'];
+// 小学3〜6年生は UPPER（デフォルト）
+
+type GradeGroup = 'preschool' | 'lower' | 'upper';
+
+function getGradeGroup(grade: string): GradeGroup {
+    if (PRESCHOOL_GRADES.includes(grade)) return 'preschool';
+    if (LOWER_GRADES.includes(grade)) return 'lower';
+    return 'upper';
+}
+
+// 学年バッジのカラークラス（ヘッダー右上）
+function getGradeBadgeStyle(grade: string): string {
+    if (PRESCHOOL_GRADES.includes(grade))
+        return 'text-orange-600 bg-orange-50 border border-orange-100';
+    if (LOWER_GRADES.includes(grade))
+        return 'text-blue-600 bg-blue-50 border border-blue-100';
+    if (grade === '小学3年生' || grade === '小学4年生')
+        return 'text-green-600 bg-green-50 border border-green-100';
+    return 'text-purple-600 bg-purple-50 border border-purple-100';
+}
+
+// 学年別 初期あいさつメッセージ
+function getInitialMessage(grade: string): string {
+    switch (grade) {
+        case '年少（3歳）':
+            return 'こんにちは！🌸\nなにをおはなしする？';
+        case '年中（4歳）':
+            return 'こんにちは！✨\nきょう、なにがきになる？';
+        case '年長（5歳）':
+            return 'こんにちは！⭐\nきょうはどんなことをおはなしする？';
+        case '小学1年生':
+            return 'こんにちは！AIせんせいだよ。\nきょうはどんなことをおはなしする？';
+        case '小学2年生':
+            return 'こんにちは！AIせんせいだよ。\nきょうはどんなことを話したい？';
+        case '小学3年生':
+            return 'こんにちは！AI先生だよ。\n今日はどんなことを話したい？';
+        case '小学4年生':
+            return 'こんにちは！AI先生だよ。\n今日はどんなことについて考えてみる？';
+        case '小学5年生':
+            return 'こんにちは！AI先生だよ。\n今日はどんなテーマで話してみる？';
+        case '小学6年生':
+            return 'こんにちは！AI先生だよ。\n今日はどんな話題に挑戦してみようか？';
+        default:
+            return 'こんにちは！AI先生だよ。\n今日はどんなことをお話しする？';
+    }
+}
+
+// 学年グループ別 エラーメッセージ
+function getErrorMessage(gradeGroup: GradeGroup): string {
+    if (gradeGroup === 'preschool') return 'ごめんね！もう一回いってみて？🌸';
+    if (gradeGroup === 'lower') return 'ごめんね、うまくきけなかった！もう一度おしえて？';
+    return '申し訳ありません、もう一度試してみてください。';
+}
+
+// ============================================================
+
 export default function ChatPage() {
     const router = useRouter();
     const [childName, setChildName] = useState<string>('');
@@ -10,8 +71,7 @@ export default function ChatPage() {
     const [childIcon, setChildIcon] = useState<string>('🐶');
     const [childGrade, setChildGrade] = useState<string>('');
 
-    // 1. State管理とRefの追加
-    const [messages, setMessages] = useState<{ id: string, text: string, sender: 'user' | 'ai' }[]>([]);
+    const [messages, setMessages] = useState<{ id: string; text: string; sender: 'user' | 'ai' }[]>([]);
     const [inputValue, setInputValue] = useState('');
     const [isTyping, setIsTyping] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -21,8 +81,8 @@ export default function ChatPage() {
     const [aiEmotion, setAiEmotion] = useState<'idle' | 'thinking' | 'happy'>('idle');
     const emotionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+    // ── セッションストレージから子ども情報を復元 ──────────────────
     useEffect(() => {
-        // sessionStorageからオンボーディングで入力した情報を取得
         const storedName = sessionStorage.getItem('currentChildName');
         const storedTitle = sessionStorage.getItem('currentChildTitle');
         const storedIcon = sessionStorage.getItem('currentChildIcon');
@@ -35,12 +95,11 @@ export default function ChatPage() {
 
         const storedAll = localStorage.getItem('allChildren');
         if (storedAll) {
-            try {
-                setSiblingsList(JSON.parse(storedAll));
-            } catch (e) { }
+            try { setSiblingsList(JSON.parse(storedAll)); } catch (_) { }
         }
     }, []);
 
+    // ── アカウント切り替え ────────────────────────────────────────
     const handleSwitchChild = (child: any) => {
         sessionStorage.setItem('currentChildName', child.name);
         sessionStorage.setItem('currentChildTitle', child.title);
@@ -51,25 +110,29 @@ export default function ChatPage() {
         setChildGrade(child.grade);
         setChildIcon(child.icon);
         setIsDropdownOpen(false);
+        // アカウント切替時はメッセージをリセット
+        setMessages([]);
     };
 
-    const isPreschooler = childGrade === '未就学児（3〜5歳）' || childGrade === 'preschool';
-    const isEarlyElementary = childGrade === '小学1年生' || childGrade === '小学2年生' || childGrade === 'grade1' || childGrade === 'grade2';
+    // ── 学年グループ判定（UI表示の切り替えに使用）─────────────────
+    const gradeGroup = getGradeGroup(childGrade);
+    const isPreschooler = gradeGroup === 'preschool';
+    const isLowerElementary = gradeGroup === 'lower';   // 小1・小2
 
-    // 背景色の決定
-    const bgColor = isPreschooler ? 'bg-[#FFF5F7]' : (isEarlyElementary ? 'bg-[#F0F8FF]' : 'bg-[#F8F9FA]');
+    // ── 背景色（学年グループ別）──────────────────────────────────
+    const bgColor = isPreschooler
+        ? 'bg-[#FFF5F7]'         // 暖かいピンク（未就学児）
+        : isLowerElementary
+            ? 'bg-[#F0F8FF]'     // 淡いブルー（小1・小2）
+            : 'bg-[#F8F9FA]';    // ニュートラルグレー（小3〜6）
 
-    // テキスト変換・振り分け
+    // ── ヘッダータイトル ────────────────────────────────────────
     const headerTitle = `${childName}${childTitle}、こんにちは！`;
 
-    const initialAiMessage = isPreschooler
-        ? "こんにちは！\nなにをおはなしする？"
-        : isEarlyElementary
-            ? "こんにちは！AIせんせいだよ。\nきょうはどんなことをおはなしする？"
-            : "こんにちは！AI先生(せんせい)だよ。\n今日はどんなことをお話しする？";
+    // ── 初期メッセージ（学年変更時に更新）──────────────────────
+    const initialAiMessage = getInitialMessage(childGrade);
 
     useEffect(() => {
-        // 初期値として、AIの最初の挨拶をmessagesにセット
         setMessages(prev => {
             if (prev.length <= 1) {
                 return [{ id: 'init', text: initialAiMessage, sender: 'ai' }];
@@ -78,44 +141,69 @@ export default function ChatPage() {
         });
     }, [initialAiMessage]);
 
-    // 4. 自動スクロール機能の実装
+    // ── メッセージ末尾へ自動スクロール ──────────────────────────
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages, isTyping]);
 
-    // 2. 送信アクションの実装
-    const handleSendMessage = () => {
-        if (!inputValue.trim()) return;
+    // ============================================================
+    // メッセージ送信（Gemini API 呼び出し）
+    // ============================================================
+    const handleSendMessage = async () => {
+        if (!inputValue.trim() || isTyping) return;
 
-        // ユーザーのメッセージを追加
-        setMessages(prev => [...prev, { id: Date.now().toString(), text: inputValue, sender: 'user' }]);
+        const userMessage = inputValue.trim();
+        const userMsg = {
+            id: Date.now().toString(),
+            text: userMessage,
+            sender: 'user' as const,
+        };
+
+        setMessages(prev => [...prev, userMsg]);
         setInputValue('');
         setIsTyping(true);
         setAiEmotion('thinking');
 
         if (emotionTimeoutRef.current) clearTimeout(emotionTimeoutRef.current);
 
-        // AIのモック返答
-        setTimeout(() => {
-            let aiReply = '';
-            if (isPreschooler) {
-                const replies = ["いいね！", "すごい", "そうなんだ", "わかった", "えー！", "なるほど"];
-                aiReply = replies[Math.floor(Math.random() * replies.length)];
-            } else if (isEarlyElementary) {
-                aiReply = "それはとても面白(おもしろ)いね！もっと教(おし)えてくれるかな？";
-            } else {
-                aiReply = "なるほど、それは興味深いですね！もっと詳しく教えてください。";
-            }
+        try {
+            const currentHistory = messages;
 
-            setMessages(prev => [...prev, { id: Date.now().toString(), text: aiReply, sender: 'ai' }]);
-            setIsTyping(false);
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: userMessage,
+                    grade: childGrade,
+                    history: currentHistory,
+                }),
+            });
+
+            if (!response.ok) throw new Error('API Error');
+
+            const data = await response.json();
+            const aiReply = data.reply || getErrorMessage(gradeGroup);
+
+            setMessages(prev => [...prev, {
+                id: Date.now().toString(),
+                text: aiReply,
+                sender: 'ai',
+            }]);
             setAiEmotion('happy');
 
-            emotionTimeoutRef.current = setTimeout(() => {
-                setAiEmotion('idle');
-            }, 2000);
-        }, 1500);
+        } catch (_) {
+            setMessages(prev => [...prev, {
+                id: Date.now().toString(),
+                text: getErrorMessage(gradeGroup),
+                sender: 'ai',
+            }]);
+            setAiEmotion('idle');
+        } finally {
+            setIsTyping(false);
+            emotionTimeoutRef.current = setTimeout(() => setAiEmotion('idle'), 2000);
+        }
     };
+    // ============================================================
 
     const getAiIcon = (isLatest: boolean) => {
         if (!isLatest || aiEmotion === 'idle') return '🤖';
@@ -125,24 +213,33 @@ export default function ChatPage() {
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        // エンターキー送信（変換中でないこと）
         if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
             e.preventDefault();
             handleSendMessage();
         }
     };
 
-    // 3. 年齢別（grade）の吹き出しデザイン動的変更
-    let bubbleBaseClasses = "text-base sm:text-lg rounded-xl"; // Default for grade3+
-    if (isPreschooler) {
-        bubbleBaseClasses = "text-xl rounded-3xl";
-    } else if (isEarlyElementary) {
-        bubbleBaseClasses = "text-lg rounded-2xl";
-    }
+    // バブルのベーススタイル（学年グループ別）
+    const bubbleBaseClasses = isPreschooler
+        ? 'text-xl rounded-3xl'
+        : isLowerElementary
+            ? 'text-lg rounded-2xl'
+            : 'text-base sm:text-lg rounded-xl';
+
+    // テキスト入力プレースホルダー（学年グループ別）
+    const placeholder = isPreschooler
+        ? 'めっせーじ...'
+        : isLowerElementary
+            ? 'メッセージをおくる...'
+            : 'メッセージを入力...';
+
+    // ヘッダーの学年バッジカラー
+    const gradeBadgeStyle = getGradeBadgeStyle(childGrade);
 
     return (
         <div className={`min-h-screen ${bgColor} flex flex-col font-sans transition-colors duration-500`}>
-            {/* Header */}
+
+            {/* ── ヘッダー ───────────────────────────────────────── */}
             <header className="bg-white/80 backdrop-blur-md shadow-sm py-4 px-6 fixed top-0 w-full z-10 border-b border-gray-100">
                 <div className="max-w-4xl w-full mx-auto flex items-center justify-between">
                     <div className="flex items-center gap-4">
@@ -159,12 +256,16 @@ export default function ChatPage() {
                             {childName ? headerTitle : 'こんにちは！'}
                         </h1>
                     </div>
+
                     <div className="flex items-center gap-3">
+                        {/* 学年バッジ（学年グループ別カラー）*/}
                         <div className="hidden sm:flex flex-col items-end">
-                            <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">
+                            <span className={`text-xs font-bold px-2 py-0.5 rounded-md ${gradeBadgeStyle}`}>
                                 {childGrade || '学年未設定'}
                             </span>
                         </div>
+
+                        {/* アイコン＆ドロップダウン */}
                         <div className="relative">
                             <button
                                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
@@ -185,10 +286,14 @@ export default function ChatPage() {
                                                 onClick={() => handleSwitchChild(child)}
                                                 className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-blue-50 transition-colors border-b border-gray-50 last:border-0"
                                             >
-                                                <span className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-lg">{child.icon}</span>
+                                                <span className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-lg">
+                                                    {child.icon}
+                                                </span>
                                                 <div>
                                                     <div className="font-semibold text-gray-800">{child.name}{child.title}</div>
-                                                    <div className="text-xs text-gray-500">{child.grade}</div>
+                                                    <div className={`text-xs px-1.5 py-0.5 rounded mt-0.5 inline-block ${getGradeBadgeStyle(child.grade)}`}>
+                                                        {child.grade}
+                                                    </div>
                                                 </div>
                                             </button>
                                         ))}
@@ -208,7 +313,7 @@ export default function ChatPage() {
                 </div>
             </header>
 
-            {/* Main Chat Area */}
+            {/* ── メインチャットエリア ───────────────────────────── */}
             <main className="flex-1 w-full max-w-4xl mx-auto pt-28 pb-28 px-4 sm:px-6 flex flex-col gap-6 overflow-y-auto">
                 {messages.map((msg, index) => {
                     const isLatestAi = msg.sender === 'ai' && index === messages.length - 1 && !isTyping;
@@ -219,24 +324,27 @@ export default function ChatPage() {
                             className={`flex items-start gap-3 sm:gap-4 animate-in fade-in slide-in-from-bottom-2 duration-300 ${msg.sender === 'user' ? 'flex-row-reverse' : ''}`}
                         >
                             <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-xl sm:text-2xl flex-shrink-0 shadow-sm border transition-colors ${msg.sender === 'ai'
-                                    ? (isLatestAi && aiEmotion === 'happy' ? 'bg-yellow-100 border-yellow-200' : 'bg-gray-100 border-gray-200')
+                                    ? (isLatestAi && aiEmotion === 'happy'
+                                        ? 'bg-yellow-100 border-yellow-200'
+                                        : 'bg-gray-100 border-gray-200')
                                     : 'bg-blue-100 border-blue-200'
                                 }`}>
                                 {msg.sender === 'ai' ? getAiIcon(isLatestAi) : childIcon}
                             </div>
 
                             <div className={`p-4 sm:p-5 shadow-sm border max-w-[85%] sm:max-w-[75%] ${bubbleBaseClasses} ${msg.sender === 'ai'
-                                ? 'bg-white border-gray-100 text-gray-800 rounded-tl-none'
-                                : 'bg-[#4285F4] border-blue-500 text-white rounded-tr-none'
+                                    ? 'bg-white border-gray-100 text-gray-800 rounded-tl-none'
+                                    : 'bg-[#4285F4] border-blue-500 text-white rounded-tr-none'
                                 }`}>
                                 <p className="leading-relaxed whitespace-pre-wrap font-medium">
                                     {msg.text}
                                 </p>
                             </div>
                         </div>
-                    )
+                    );
                 })}
 
+                {/* タイピングインジケーター */}
                 {isTyping && (
                     <div className="flex items-start gap-3 sm:gap-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
                         <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-xl sm:text-2xl flex-shrink-0 shadow-sm border bg-gray-100 border-gray-200 ${aiEmotion === 'thinking' ? 'animate-pulse' : ''}`}>
@@ -254,7 +362,7 @@ export default function ChatPage() {
                 <div ref={messagesEndRef} />
             </main>
 
-            {/* Message Input Bottom Bar */}
+            {/* ── 入力フッター ───────────────────────────────────── */}
             <footer className="fixed bottom-0 w-full bg-white/80 backdrop-blur-md border-t border-gray-200 p-4 pb-6 sm:pb-4 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
                 <div className="max-w-4xl mx-auto flex gap-3">
                     <input
@@ -262,7 +370,7 @@ export default function ChatPage() {
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
                         onKeyDown={handleKeyDown}
-                        placeholder={isPreschooler ? "めっせーじ..." : "メッセージを入力..."}
+                        placeholder={placeholder}
                         className="flex-1 py-3 px-5 sm:py-4 sm:px-6 bg-gray-100 border border-transparent rounded-full focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-gray-800 font-medium md:text-lg"
                     />
                     <button

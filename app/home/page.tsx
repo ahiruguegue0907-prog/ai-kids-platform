@@ -2,15 +2,17 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { MessageCircle, Search, Gamepad2 } from 'lucide-react';
+import { useClerk } from '@clerk/nextjs';
+import { MessageCircle, Search, Gamepad2, LogOut } from 'lucide-react';
 
 export default function HomePage() {
     const router = useRouter();
+    const { signOut } = useClerk();
+
     const [childName, setChildName] = useState<string>('');
     const [childTitle, setChildTitle] = useState<string>('');
     const [childIcon, setChildIcon] = useState<string>('🐶');
     const [childGrade, setChildGrade] = useState<string>('');
-
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [siblingsList, setSiblingsList] = useState<any[]>([]);
 
@@ -27,11 +29,17 @@ export default function HomePage() {
 
         const storedAll = localStorage.getItem('allChildren');
         if (storedAll) {
-            try {
-                setSiblingsList(JSON.parse(storedAll));
-            } catch (e) { }
+            try { setSiblingsList(JSON.parse(storedAll)); } catch (e) { }
         }
     }, []);
+
+    // ログアウト処理
+    const handleLogout = async () => {
+        setIsDropdownOpen(false);
+        sessionStorage.clear();
+        await signOut();
+        router.push('/onboarding');
+    };
 
     const handleSwitchChild = (child: any) => {
         sessionStorage.setItem('currentChildName', child.name);
@@ -47,17 +55,15 @@ export default function HomePage() {
 
     const isPreschooler = childGrade === '未就学児（3〜5歳）';
     const isEarlyElementary = childGrade === '小学1年生' || childGrade === '小学2年生';
-
     const displayName = childName ? `${childName}${childTitle}` : '';
 
-    // 年齢別UIテーマ設定
     let theme = {
-        bgColor: 'bg-slate-50', // 小学3年生以上のデフォルト
+        bgColor: 'bg-slate-50',
         cardBorder: 'border border-gray-200',
         cardShadow: 'shadow-md shadow-gray-200',
         greeting: displayName
-            ? `${displayName}、こんにちは。本日はどのような学習をサポートしましょうか？ 以下のメニューから選択してください。`
-            : 'こんにちは。本日はどのような学習をサポートしましょうか？ 以下のメニューから選択してください。',
+            ? `${displayName}、こんにちは。本日はどのような学習をサポートしましょうか？`
+            : 'こんにちは。本日はどのような学習をサポートしましょうか？',
         iconSize: 32,
         titleClass: 'text-lg font-semibold text-gray-700',
         borderRadius: 'rounded-xl',
@@ -67,23 +73,21 @@ export default function HomePage() {
     };
 
     if (isPreschooler) {
-        // 未就学児向け：温かみ・極端な大きさ
         theme = {
             bgColor: 'bg-pink-50',
             cardBorder: 'border-4 border-pink-200',
             cardShadow: 'shadow-lg shadow-pink-100',
             greeting: displayName
-                ? `${displayName}、こんにちは！ きょうも いっしょに たのしく あそぼうね！ なにから はじめる？`
-                : 'こんにちは！ きょうも いっしょに たのしく あそぼうね！ なにから はじめる？',
+                ? `${displayName}、こんにちは！ きょうも いっしょに たのしく あそぼうね！`
+                : 'こんにちは！ きょうも いっしょに たのしく あそぼうね！',
             iconSize: 56,
             titleClass: 'text-2xl font-black text-gray-800',
-            borderRadius: 'rounded-[3rem]', // とても丸く
+            borderRadius: 'rounded-[3rem]',
             aiButtonText: 'あいせんせいに\nきく',
             searchButtonText: 'しらべる',
             playButtonText: 'あそぶ'
         };
     } else if (isEarlyElementary) {
-        // 小学校低学年向け：元気・冒険心
         theme = {
             bgColor: 'bg-sky-50',
             cardBorder: 'border-2 border-sky-300',
@@ -136,12 +140,25 @@ export default function HomePage() {
                                         </button>
                                     ))}
                                 </div>
+
+                                {/* 保護者メニュー */}
                                 <div className="p-2 border-t border-gray-100 bg-gray-50 hover:bg-gray-100 transition-colors">
                                     <button
                                         onClick={() => router.push('/onboarding')}
                                         className="w-full text-center text-sm font-medium text-gray-600 py-2"
                                     >
                                         保護者メニュー（設定）
+                                    </button>
+                                </div>
+
+                                {/* ログアウトボタン ← 追加 */}
+                                <div className="p-2 border-t border-red-100 bg-red-50 hover:bg-red-100 transition-colors">
+                                    <button
+                                        onClick={handleLogout}
+                                        className="w-full flex items-center justify-center gap-2 text-sm font-medium text-red-600 py-2"
+                                    >
+                                        <LogOut size={16} />
+                                        ログアウト
                                     </button>
                                 </div>
                             </div>
@@ -153,7 +170,6 @@ export default function HomePage() {
             {/* Main Content */}
             <main className="flex-1 w-full max-w-5xl mx-auto p-6 sm:p-8 flex flex-col items-center justify-center gap-8 animate-in fade-in zoom-in-95 duration-700 delay-150">
                 <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
-                    {/* Ask AI Teacher Card (Main Action) */}
                     <button
                         onClick={() => router.push('/chat')}
                         className={`group relative flex flex-col items-center justify-center gap-6 bg-white ${theme.cardBorder} ${theme.cardShadow} ${theme.borderRadius} p-8 aspect-square md:aspect-auto md:min-h-[300px] hover:shadow-xl hover:-translate-y-2 transition-all duration-300 text-center`}
@@ -166,7 +182,6 @@ export default function HomePage() {
                         </h2>
                     </button>
 
-                    {/* Research Card */}
                     <button
                         className={`group relative flex flex-col items-center justify-center gap-6 bg-white ${theme.cardBorder} ${theme.cardShadow} ${theme.borderRadius} p-8 aspect-square md:aspect-auto md:min-h-[300px] hover:shadow-xl hover:-translate-y-2 transition-all duration-300 text-center`}
                     >
@@ -178,7 +193,6 @@ export default function HomePage() {
                         </h2>
                     </button>
 
-                    {/* Play Card */}
                     <button
                         className={`group relative flex flex-col items-center justify-center gap-6 bg-white ${theme.cardBorder} ${theme.cardShadow} ${theme.borderRadius} p-8 aspect-square md:aspect-auto md:min-h-[300px] hover:shadow-xl hover:-translate-y-2 transition-all duration-300 text-center`}
                     >

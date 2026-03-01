@@ -48,38 +48,129 @@ export default function LandingPage() {
         <div className="container relative mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="inline-flex items-center rounded-full border border-teal-200 bg-teal-50 px-4 py-1.5 text-sm font-medium text-teal-800 mb-8 shadow-sm">
             <Sparkles className="mr-2 h-4 w-4" />
-            未就学児〜小学生の新しい学び
+            子どもが主人公。AIは相棒。
           </div>
           <h1 className="mx-auto max-w-4xl text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl leading-[1.1]">
-            想像を、創造に。<br className="hidden sm:block" />
-            子どもの可能性を無限に広げる<br className="hidden sm:block" />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-600 to-blue-600">はじめてのAIプラットフォーム</span>
+            AIを一方通行にしない<br className="hidden sm:block" />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-600 to-blue-600">あなたと一緒に、考える。</span>
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg sm:text-xl leading-8 text-slate-600 text-balance">
-            AIは一方通行じゃない。<br />
-            『問いかけるAI』で、『考える』を楽しみ、親子で未来を創る。<br />
-            テクノロジー社会を『生き抜く力』を、今その手に。
+            「正解」がすぐ手に入る時代だからこそ、本当に大切なのは<br />
+            「自分で考え、自分の答えを見つける力」です。<br />
+            SOU-Aは、子どもの隣に寄り添い、一緒に考えるAI相棒。<br />
+            テクノロジー社会で生き抜く力を、親子で育てましょう。
           </p>
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link href="/signup" className="inline-flex w-full sm:w-auto items-center justify-center rounded-full bg-teal-600 px-8 py-5 text-lg font-semibold text-white shadow-md hover:bg-teal-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600 transition-all hover:scale-105 active:scale-95">
-              まずは無料トライアル
+              無料で試してみる
               <ChevronRight className="ml-2 h-6 w-6" />
             </Link>
-            <Link href="#features" className="inline-flex w-full sm:w-auto items-center justify-center rounded-full bg-white px-8 py-5 text-lg font-semibold text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 transition-all active:scale-95">
-              機能を見る
+            <Link href="#" className="inline-flex w-full sm:w-auto items-center justify-center rounded-full bg-white px-8 py-5 text-lg font-semibold text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 transition-all active:scale-95">
+              SOU-Aについて知る
             </Link>
           </div>
 
-          {/* Hero Image Placeholder */}
-          <div className="mt-16 sm:mt-24 mx-auto max-w-5xl rounded-2xl bg-slate-50/50 p-2 sm:p-4 ring-1 ring-inset ring-slate-200/50 backdrop-blur-sm lg:rounded-3xl">
-            <div className="aspect-[16/9] md:aspect-[21/9] w-full rounded-xl bg-gradient-to-br from-slate-100 to-teal-50 ring-1 ring-inset ring-slate-200 overflow-hidden shadow-2xl relative flex items-center justify-center">
-              <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-white/80 to-transparent"></div>
-              <div className="relative text-center">
-                <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-white shadow-lg text-teal-500 mb-4 animate-bounce">
-                  <BrainCircuit size={40} />
+          {/* Demo Section */}
+          <div className="py-20 px-4 w-full">
+            {/* ① セクションタイトル（中央揃え） */}
+            <h2 className="text-2xl md:text-3xl font-bold text-center text-gray-900 mb-10">
+              「AIせんせい」との会話、のぞいてみませんか？
+            </h2>
+
+            {/* ② チャットウィンドウ（モックUI） */}
+            <div className="max-w-lg mx-auto bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100 text-left">
+              {/* ■ チャットヘッダー（上部バー） */}
+              <div className="bg-teal-600 px-4 py-3 flex items-center justify-between">
+                <div className="flex items-center gap-2 text-white font-bold">
+                  <span>🌿</span>
+                  <span>AIせんせい</span>
                 </div>
-                <p className="text-slate-500 font-medium tracking-wide">AI連携デモンストレーション画面</p>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full bg-green-400"></div>
+                  <span className="text-white text-xs">オンライン</span>
+                </div>
               </div>
+
+              {/* ■ チャット本文エリア */}
+              <div className="bg-gray-50 p-4 space-y-4">
+                {/* 【メッセージ1】子ども（右寄せ） */}
+                <div className="flex justify-end">
+                  <div className="flex flex-col items-end gap-1">
+                    <div className="bg-teal-500 text-white rounded-2xl rounded-tr-sm px-4 py-2 max-w-xs break-words">
+                      ねえ、なんで空は青いの？
+                    </div>
+                    <span className="text-xs text-gray-400">👦</span>
+                  </div>
+                </div>
+
+                {/* 【メッセージ2】AIせんせい（左寄せ） */}
+                <div className="flex justify-start items-start gap-2">
+                  <div className="bg-teal-100 rounded-full p-1.5 shrink-0 flex items-center justify-center">
+                    <span className="leading-none text-sm">🌿</span>
+                  </div>
+                  <div className="flex flex-col items-start gap-1">
+                    <span className="text-xs font-bold text-teal-600 ml-1">AIせんせい</span>
+                    <div className="bg-white border-l-4 border-teal-400 rounded-2xl rounded-tl-sm px-4 py-2 shadow-sm max-w-xs break-words text-gray-800">
+                      いい質問だね！✨<br />
+                      まず、あなたはどう思う？<br />
+                      光ってどんな色があるか、知ってる？🎨
+                    </div>
+                  </div>
+                </div>
+
+                {/* 【メッセージ3】子ども（右寄せ） */}
+                <div className="flex justify-end">
+                  <div className="flex flex-col items-end gap-1">
+                    <div className="bg-teal-500 text-white rounded-2xl rounded-tr-sm px-4 py-2 max-w-xs break-words">
+                      えっと…虹みたいな色？
+                    </div>
+                    <span className="text-xs text-gray-400">👦</span>
+                  </div>
+                </div>
+
+                {/* 【メッセージ4】AIせんせい（左寄せ） */}
+                <div className="flex justify-start items-start gap-2">
+                  <div className="bg-teal-100 rounded-full p-1.5 shrink-0 flex items-center justify-center">
+                    <span className="leading-none text-sm">🌿</span>
+                  </div>
+                  <div className="flex flex-col items-start gap-1">
+                    <span className="text-xs font-bold text-teal-600 ml-1">AIせんせい</span>
+                    <div className="bg-white border-l-4 border-teal-400 rounded-2xl rounded-tl-sm px-4 py-2 shadow-sm max-w-xs break-words text-gray-800">
+                      そう、大正解のヒントだよ！🌈<br />
+                      じゃあ、空と虹って同じ光なのに、<br />
+                      なんで色が違うと思う？
+                    </div>
+                  </div>
+                </div>
+
+                {/* タイピングインジケーター */}
+                <div className="flex justify-start items-start gap-2">
+                  <div className="bg-teal-100 rounded-full p-1.5 shrink-0 flex items-center justify-center">
+                    <span className="leading-none text-sm">🌿</span>
+                  </div>
+                  <div className="flex flex-col items-start gap-1">
+                    <span className="text-xs font-bold text-teal-600 ml-1">AIせんせい</span>
+                    <div className="bg-white border-l-4 border-teal-400 rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm max-w-xs flex gap-1.5 items-center h-10">
+                      <span className="w-2 h-2 bg-teal-400 rounded-full animate-pulse" style={{ animationDelay: '0ms' }}></span>
+                      <span className="w-2 h-2 bg-teal-400 rounded-full animate-pulse" style={{ animationDelay: '150ms' }}></span>
+                      <span className="w-2 h-2 bg-teal-400 rounded-full animate-pulse" style={{ animationDelay: '300ms' }}></span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ③ キャプション（中央揃え・小さめテキスト・2行） */}
+            <p className="text-gray-500 text-sm text-center leading-relaxed mt-6">
+              答えを「渡す」のではなく、答えを「引き出す」。<br />
+              それがSOU-Aのアプローチです。
+            </p>
+
+            {/* ④ CTAボタン（中央揃え・小さめアウトラインボタン） */}
+            <div className="text-center mt-6">
+              <Link href="/chat" className="inline-block border border-teal-500 text-teal-600 rounded-full px-6 py-2 text-sm hover:bg-teal-50 transition-colors">
+                実際に話してみる →
+              </Link>
             </div>
           </div>
         </div>
