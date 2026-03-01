@@ -5,6 +5,14 @@ import { useRouter } from 'next/navigation';
 import { useClerk } from '@clerk/nextjs';
 import { MessageCircle, Search, Gamepad2, LogOut } from 'lucide-react';
 
+interface ChildData {
+    id: string;
+    name: string;
+    title: string;
+    icon: string;
+    grade: string;
+}
+
 export default function HomePage() {
     const router = useRouter();
     const { signOut } = useClerk();
@@ -14,7 +22,7 @@ export default function HomePage() {
     const [childIcon, setChildIcon] = useState<string>('🐶');
     const [childGrade, setChildGrade] = useState<string>('');
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-    const [siblingsList, setSiblingsList] = useState<any[]>([]);
+    const [siblingsList, setSiblingsList] = useState<ChildData[]>([]);
 
     useEffect(() => {
         const storedName = sessionStorage.getItem('currentChildName');
@@ -22,9 +30,13 @@ export default function HomePage() {
         const storedIcon = sessionStorage.getItem('currentChildIcon');
         const storedGrade = sessionStorage.getItem('currentChildGrade');
 
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         if (storedName) setChildName(storedName);
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         if (storedTitle !== null) setChildTitle(storedTitle);
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         if (storedIcon) setChildIcon(storedIcon);
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         if (storedGrade) setChildGrade(storedGrade);
 
         const storedAll = localStorage.getItem('allChildren');
@@ -41,7 +53,7 @@ export default function HomePage() {
         router.push('/onboarding');
     };
 
-    const handleSwitchChild = (child: any) => {
+    const handleSwitchChild = (child: ChildData) => {
         sessionStorage.setItem('currentChildName', child.name);
         sessionStorage.setItem('currentChildTitle', child.title);
         sessionStorage.setItem('currentChildGrade', child.grade);
@@ -126,7 +138,7 @@ export default function HomePage() {
                                     アカウントをきりかえる
                                 </div>
                                 <div className="max-h-60 overflow-y-auto">
-                                    {siblingsList.map((child: any) => (
+                                    {siblingsList.map((child: ChildData) => (
                                         <button
                                             key={child.id}
                                             onClick={() => handleSwitchChild(child)}

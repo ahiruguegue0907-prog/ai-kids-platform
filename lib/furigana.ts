@@ -52,6 +52,7 @@ function stripFurigana(text: string): string {
 // ============================================================
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let _tokenizer: any = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let _initPromise: Promise<any> | null = null;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

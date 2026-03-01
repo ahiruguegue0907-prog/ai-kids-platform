@@ -64,6 +64,14 @@ function getErrorMessage(gradeGroup: GradeGroup): string {
 
 // ============================================================
 
+interface ChildData {
+    id: string;
+    name: string;
+    title: string;
+    icon: string;
+    grade: string;
+}
+
 export default function ChatPage() {
     const router = useRouter();
     const [childName, setChildName] = useState<string>('');
@@ -77,7 +85,7 @@ export default function ChatPage() {
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-    const [siblingsList, setSiblingsList] = useState<any[]>([]);
+    const [siblingsList, setSiblingsList] = useState<ChildData[]>([]);
     const [aiEmotion, setAiEmotion] = useState<'idle' | 'thinking' | 'happy'>('idle');
     const emotionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -100,7 +108,7 @@ export default function ChatPage() {
     }, []);
 
     // ── アカウント切り替え ────────────────────────────────────────
-    const handleSwitchChild = (child: any) => {
+    const handleSwitchChild = (child: ChildData) => {
         sessionStorage.setItem('currentChildName', child.name);
         sessionStorage.setItem('currentChildTitle', child.title);
         sessionStorage.setItem('currentChildGrade', child.grade);
@@ -280,7 +288,7 @@ export default function ChatPage() {
                                         アカウントをきりかえる
                                     </div>
                                     <div className="max-h-60 overflow-y-auto">
-                                        {siblingsList.map((child: any) => (
+                                        {siblingsList.map((child: ChildData) => (
                                             <button
                                                 key={child.id}
                                                 onClick={() => handleSwitchChild(child)}
@@ -324,17 +332,17 @@ export default function ChatPage() {
                             className={`flex items-start gap-3 sm:gap-4 animate-in fade-in slide-in-from-bottom-2 duration-300 ${msg.sender === 'user' ? 'flex-row-reverse' : ''}`}
                         >
                             <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-xl sm:text-2xl flex-shrink-0 shadow-sm border transition-colors ${msg.sender === 'ai'
-                                    ? (isLatestAi && aiEmotion === 'happy'
-                                        ? 'bg-yellow-100 border-yellow-200'
-                                        : 'bg-gray-100 border-gray-200')
-                                    : 'bg-blue-100 border-blue-200'
+                                ? (isLatestAi && aiEmotion === 'happy'
+                                    ? 'bg-yellow-100 border-yellow-200'
+                                    : 'bg-gray-100 border-gray-200')
+                                : 'bg-blue-100 border-blue-200'
                                 }`}>
                                 {msg.sender === 'ai' ? getAiIcon(isLatestAi) : childIcon}
                             </div>
 
                             <div className={`p-4 sm:p-5 shadow-sm border max-w-[85%] sm:max-w-[75%] ${bubbleBaseClasses} ${msg.sender === 'ai'
-                                    ? 'bg-white border-gray-100 text-gray-800 rounded-tl-none'
-                                    : 'bg-[#4285F4] border-blue-500 text-white rounded-tr-none'
+                                ? 'bg-white border-gray-100 text-gray-800 rounded-tl-none'
+                                : 'bg-[#4285F4] border-blue-500 text-white rounded-tr-none'
                                 }`}>
                                 <p className="leading-relaxed whitespace-pre-wrap font-medium">
                                     {msg.text}

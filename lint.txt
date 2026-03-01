@@ -1,0 +1,47 @@
+
+> kids-ai-app@0.1.0 lint
+> eslint
+
+
+C:\Kids_AI_Project _ Flash\app\chat\page.tsx
+   80:54  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   98:68  warning  '_' is defined but never used             @typescript-eslint/no-unused-vars
+  103:39  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  194:18  warning  '_' is defined but never used             @typescript-eslint/no-unused-vars
+  283:67  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Kids_AI_Project _ Flash\app\home\page.tsx
+   17:54  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        @typescript-eslint/no-explicit-any
+   25:25  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Kids_AI_Project _ Flash\app\home\page.tsx:25:25
+  23 |         const storedGrade = sessionStorage.getItem('currentChildGrade');
+  24 |
+> 25 |         if (storedName) setChildName(storedName);
+     |                         ^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  26 |         if (storedTitle !== null) setChildTitle(storedTitle);
+  27 |         if (storedIcon) setChildIcon(storedIcon);
+  28 |         if (storedGrade) setChildGrade(storedGrade);  react-hooks/set-state-in-effect
+   32:68  warning  'e' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   @typescript-eslint/no-unused-vars
+   44:39  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        @typescript-eslint/no-explicit-any
+  129:63  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        @typescript-eslint/no-explicit-any
+
+C:\Kids_AI_Project _ Flash\components\ui\BigButton.tsx
+  1:10  warning  'Check' is defined but never used  @typescript-eslint/no-unused-vars
+  1:17  warning  'X' is defined but never used      @typescript-eslint/no-unused-vars
+
+C:\Kids_AI_Project _ Flash\components\ui\Navbar.tsx
+  10:12  warning  'showGate' is assigned a value but never used     @typescript-eslint/no-unused-vars
+  10:22  warning  'setShowGate' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Kids_AI_Project _ Flash\lib\furigana.ts
+  55:27  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+✖ 15 problems (8 errors, 7 warnings)
+
