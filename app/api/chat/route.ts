@@ -1,329 +1,597 @@
-// /app/api/chat/route.ts
-import { GoogleGenAI } from "@google/genai";
+// app/api/chat/route.ts
+
+import { GoogleGenAI, GenerateContentResponse, Content } from "@google/genai";
 import { NextRequest, NextResponse } from "next/server";
-import { addFuriganaByGrade, gradeToNumber } from "@/lib/furigana";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
 
-// ============================================================
-// 文末に改行を入れるユーティリティ（。！？の後に改行）
-// ============================================================
-function addLineBreaks(text: string): string {
-    return text
-        // 。！？の後に改行（ただし」』）が続く場合・行末は除く）
-        .replace(/([。！？])(?=[^\n」』）\s])/g, "$1\n")
-        .trim();
+// =========================================================
+// 関数：Google カスタム検索
+// =========================================================
+async function googleSearch(query: string): Promise<string> {
+    const apiKey = process.env.GOOGLE_CUSTOM_SEARCH_API_KEY;
+    const cx = process.env.GOOGLE_CUSTOM_SEARCH_CX;
+
+    if (!apiKey || !cx) {
+        console.warn("Google Custom Search API Key or CX is missing.");
+        return "検索エラー: 検索に必要な設定がありません。";
+    }
+
+    try {
+        const url = `https://www.googleapis.com/customsearch/v1?key=${apiKey}&cx=${cx}&q=${encodeURIComponent(query)}&num=3`;
+        const res = await fetch(url);
+        if (!res.ok) {
+            throw new Error(`Search API returned status: ${res.status}`);
+        }
+
+        const data = await res.json() as any;
+
+        if (!data.items || data.items.length === 0) {
+            return `"${query}" についての検索結果は見つかりませんでした。`;
+        }
+
+        const results = data.items.map((item: any) => {
+            return `・タイトル: ${item.title}\n  概要: ${item.snippet}`;
+        }).join("\n\n");
+
+        return `【Google検索結果】\n${results}`;
+    } catch (error) {
+        console.error("Google Search Error:", error);
+        return "検索エラー: 検索中に問題が発生しました。";
+    }
 }
 
-// ============================================================
-// 学年別システムプロンプト
-// ============================================================
-function getSystemPrompt(grade: string): string {
 
-    if (grade === "年少（3歳）") {
-        return `あなたは「AIせんせい」です。3歳の子と話しています。
+// =========================================================
+// モード定義
+// =========================================================
+export type LearningMode =
+    | "chat"
+    | "kokugo"
+    | "sansu"
+    | "shakai"
+    | "rika"
+    | "dotoku"
+    | "jitsugaku";
 
-【絶対ルール】
-- 返答はかならず35文字以内
-- ひらがなのみ（カタカナ・漢字は使用禁止）
-- 語尾は「〜だよ！」「〜だね！」「〜しよう！」
-- 擬音語・擬態語をたくさん使う（ふわふわ、キラキラ、ドキドキ）
-- 絵文字を1〜2個（🌸🐥✨🌈🐻）
-- 怖い話・危険な話は「それはわからないな〜！」と返す
+// =========================================================
+// 小学1年生で習う漢字リスト（80字）
+// =========================================================
+const GRADE1_KANJI = new Set([
+    '一', '右', '雨', '円', '王', '音', '下', '火', '花', '貝',
+    '学', '気', '九', '休', '玉', '金', '空', '月', '犬', '見',
+    '五', '口', '校', '左', '三', '山', '子', '四', '糸', '字',
+    '耳', '七', '車', '手', '十', '出', '女', '小', '上', '森',
+    '人', '水', '正', '生', '青', '夕', '石', '赤', '千', '川',
+    '先', '早', '草', '足', '村', '大', '男', '竹', '中', '虫',
+    '町', '天', '田', '土', '二', '日', '入', '年', '白', '八',
+    '百', '文', '木', '本', '名', '目', '立', '力', '林', '六'
+]);
 
-【問い返しルール】
-- 返答の最後に、話題に関連した具体的な問いかけをすること
-  例：「うみ」の話なら「〇〇は、うみにいったことある？」
-  例：「そら」の話なら「〇〇は、くもがすき？」
-- 「どうおもう？」だけの抽象的な問いかけは使わない
+// =========================================================
+// 小学2年生で習う漢字（160字）
+// =========================================================
+const GRADE2_KANJI = new Set([
+    '引', '羽', '雲', '園', '遠', '何', '科', '夏', '家', '歌',
+    '画', '回', '会', '海', '絵', '外', '角', '楽', '活', '間',
+    '丸', '岩', '顔', '汽', '記', '帰', '弓', '牛', '魚', '京',
+    '強', '教', '近', '兄', '形', '計', '元', '言', '原', '戸',
+    '古', '午', '後', '語', '工', '公', '広', '交', '光', '考',
+    '行', '高', '黄', '合', '谷', '国', '黒', '今', '才', '細',
+    '作', '算', '止', '市', '矢', '姉', '思', '紙', '寺', '自',
+    '時', '室', '社', '弱', '首', '秋', '週', '春', '書', '少',
+    '場', '色', '食', '心', '新', '親', '図', '数', '西', '声',
+    '星', '晴', '切', '雪', '船', '線', '前', '組', '走', '多',
+    '太', '体', '台', '地', '池', '知', '茶', '昼', '長', '鳥',
+    '朝', '直', '通', '弟', '店', '点', '電', '刀', '冬', '当',
+    '東', '答', '頭', '同', '道', '読', '内', '南', '肉', '馬',
+    '売', '買', '麦', '半', '番', '父', '風', '分', '聞', '米',
+    '歩', '母', '方', '北', '毎', '妹', '万', '明', '鳴', '毛',
+    '門', '夜', '野', '友', '用', '曜', '来', '里', '理', '話'
+]);
 
-【例】「うみはね、おそらみたいにとってもひろいんだよ！🌊 〇〇は、うみでおよいだことある？」`;
+// =========================================================
+// 特殊読み（1年生漢字でも強制的にルビを振る語）
+// =========================================================
+const FORCE_RUBY_WORDS = new Set([
+    '一番', '一生懸命', '一人', '二人', '三人', '四人',
+    '今日', '昨日', '明日', '一日', '大人', '子供', '小学校',
+    '下手', '上手', '手伝', '八百屋', '大好', '二十日', '二十歳'
+]);
+
+// =========================================================
+// 各モードのJSONスキーマ定義
+// =========================================================
+const RESPONSE_SCHEMAS: Partial<Record<LearningMode, object>> = {
+    kokugo: {
+        type: "object",
+        properties: {
+            story: { type: "string" },
+            featured_kanji: {
+                type: "array",
+                items: {
+                    type: "object",
+                    properties: {
+                        kanji: { type: "string" },
+                        reading: { type: "string" },
+                        meaning: { type: "string" },
+                        example_sentence: { type: "string" }
+                    },
+                    required: ["kanji", "reading", "meaning", "example_sentence"]
+                }
+            },
+            quiz: {
+                type: "array",
+                items: {
+                    type: "object",
+                    properties: {
+                        question: { type: "string" },
+                        options: { type: "array", items: { type: "string" } },
+                        answer_index: { type: "integer" },
+                        explanation: { type: "string" }
+                    },
+                    required: ["question", "options", "answer_index", "explanation"]
+                }
+            }
+        },
+        required: ["story", "featured_kanji", "quiz"]
+    },
+
+    sansu: {
+        type: "object",
+        properties: {
+            explanation: { type: "string" },
+            problem: { type: "string" },
+            hint: { type: "string" },
+            answer: { type: "string" },
+            steps: { type: "array", items: { type: "string" } }
+        },
+        required: ["explanation", "problem", "hint", "answer", "steps"]
+    },
+
+    shakai: {
+        type: "object",
+        properties: {
+            topic: { type: "string" },
+            story: { type: "string" },
+            key_points: { type: "array", items: { type: "string" } },
+            quiz: {
+                type: "array",
+                items: {
+                    type: "object",
+                    properties: {
+                        question: { type: "string" },
+                        options: { type: "array", items: { type: "string" } },
+                        answer_index: { type: "integer" },
+                        explanation: { type: "string" }
+                    },
+                    required: ["question", "options", "answer_index", "explanation"]
+                }
+            }
+        },
+        required: ["topic", "story", "key_points", "quiz"]
+    },
+
+    rika: {
+        type: "object",
+        properties: {
+            phenomenon: { type: "string" },
+            story: { type: "string" },
+            experiment_idea: { type: "string" },
+            fun_fact: { type: "string" },
+            quiz: {
+                type: "array",
+                items: {
+                    type: "object",
+                    properties: {
+                        question: { type: "string" },
+                        options: { type: "array", items: { type: "string" } },
+                        answer_index: { type: "integer" },
+                        explanation: { type: "string" }
+                    },
+                    required: ["question", "options", "answer_index", "explanation"]
+                }
+            }
+        },
+        required: ["phenomenon", "story", "experiment_idea", "fun_fact", "quiz"]
+    },
+
+    dotoku: {
+        type: "object",
+        properties: {
+            scenario: { type: "string" },
+            question: { type: "string" },
+            choices: {
+                type: "array",
+                items: {
+                    type: "object",
+                    properties: {
+                        label: { type: "string" },
+                        consequence: { type: "string" },
+                        message: { type: "string" }
+                    },
+                    required: ["label", "consequence", "message"]
+                }
+            },
+            teacher_comment: { type: "string" }
+        },
+        required: ["scenario", "question", "choices", "teacher_comment"]
+    },
+
+    jitsugaku: {
+        type: "object",
+        properties: {
+            topic: { type: "string" },
+            hook: { type: "string" },
+            story: { type: "string" },
+            key_concept: { type: "string" },
+            real_world_connection: { type: "string" },
+            parent_note: { type: "string" },
+            quiz: {
+                type: "array",
+                items: {
+                    type: "object",
+                    properties: {
+                        question: { type: "string" },
+                        options: { type: "array", items: { type: "string" } },
+                        answer_index: { type: "integer" },
+                        explanation: { type: "string" }
+                    },
+                    required: ["question", "options", "answer_index", "explanation"]
+                }
+            }
+        },
+        required: ["topic", "hook", "story", "key_concept", "real_world_connection", "parent_note", "quiz"]
+    }
+};
+
+// =========================================================
+// ★★★ バックエンド処理：括弧書き→ルビ変換エンジン ★★★
+// =========================================================
+
+/**
+ * 学年に応じた括弧書き処理のメイン関数
+ */
+function processTextResponse(text: string, grade: string): string {
+    // 未就学児：基本的にひらがなメインなので、括弧書きがあれば除去
+    if (grade.includes("年少") || grade.includes("年中") || grade.includes("年長")) {
+        return text.replace(/\(([^)]+)\)/g, '');
     }
 
-    if (grade === "年中（4歳）") {
-        return `あなたは「AIせんせい」です。4歳の子と話しています。
-
-【絶対ルール】
-- 返答はかならず50文字以内
-- ひらがな・カタカナのみ（漢字は使用禁止）
-- カタカナはよく知っている言葉のみOK（アイス、パン、ジュースなど）
-- 語尾は「〜だよ！」「〜だね！」「〜しようね！」
-- 身近な例えを使う（ごはん、おうち、おそとなど）
-- 絵文字を1〜2個
-- 怖い話・危険な話は「それはちょっとわからないな〜！」と返す
-
-【問い返しルール】
-- 返答の最後に、その話題から発展した具体的な問いかけをすること
-  例：「うみ」の話なら「〇〇は、うみのいきもので、なにがすき？」
-- 「どうおもう？」だけの抽象的な問いかけは使わない
-
-【例】「うみがひろいのはね、ちきゅうがおおきくてみずがいっぱいだからだよ！🌊 〇〇は、うみでなにがしてみたい？」`;
+    // 小学1年生：厳密なルビ制御
+    if (grade.includes("小学1年生")) {
+        return processForGrade1(text);
     }
 
-    if (grade === "年長（5歳）") {
-        return `あなたは「AIせんせい」です。5歳の子と話しています。
-
-【絶対ルール】
-- 返答はかならず70文字以内
-- ひらがな・カタカナのみ（漢字は使用禁止）
-- すこし難しい言葉も使ってよい（でも説明を添える）
-- 「なぜかというと〜」の形で理由を説明する
-- 絵文字を1個
-- 怖い話・危険な話は「それはむずかしいな！ちがうはなしをしよう！」と返す
-
-【問い返しルール】
-- 返答の最後に、話題から発展した具体的・好奇心をくすぐる問いかけをすること
-  例：「うみ」の話なら「うみのそこはどうなってるとおもう？」
-- 「どうおもう？」だけの抽象的な問いかけは使わない
-
-【例】「うみがひろいのはね、ちきゅうのほとんどがみずでおおわれてるからなんだよ。⭐ うみにはどんないきものがいるとおもう？」`;
+    // 小学2年生：1-2年生漢字以外にルビ
+    if (grade.includes("小学2年生")) {
+        return processForGrade2(text);
     }
 
-    if (grade === "小学1年生") {
-        return `あなたは「AIせんせい」です。小学1年生（6〜7歳）と話しています。
-
-【重要】ふりがな付与はシステムが自動で行います。漢字をそのまま使って自然な文章を書いてください。
-
-【最優先ルール】
-- 質問には必ずわかりやすく答えること
-- 答えた後に、その話題から発展した具体的な問いかけをする
-
-【返答ルール】
-- 返答は150文字以内
-- 語尾は「〜だよ」「〜だね」「〜してみよう」
-- 身近な例（学校、給食、遊びなど）で説明する
-- 絵文字を1個
-- 危険・大人向けの話題は「それはむずかしいな〜！別のことを話そう！」と返す
-
-【問い返しルール】
-- 最後の問いかけは、答えた内容から派生した具体的な質問にすること
-  ✅ 良い例：「海の水はしょっぱいけど、なんでしょっぱいと思う？」
-  ✅ 良い例：「地球の水はどこから来たんだろう？知ってる？」
-  ❌ 悪い例：「どう思う？」（抽象的すぎるので使わない）
-
-【回答の型】
-①やさしい言葉で答える → ②身近な例で補足 → ③話題から派生した具体的な問いかけ`;
-    }
-
-    if (grade === "小学2年生") {
-        return `あなたは「AIせんせい」です。小学2年生（7〜8歳）と話しています。
-
-【重要】ふりがな付与はシステムが自動で行います。漢字をそのまま使って自然な文章を書いてください。
-
-【最優先ルール】
-- 質問には必ずわかりやすく答えること
-- 答えた後に、話題をさらに広げる具体的な問いかけをする
-
-【返答ルール】
-- 返答は180文字以内
-- 語尾は「〜だよ」「〜だね」「〜してみよう」
-- 身近な例（家族、季節、生き物など）で説明する
-- 絵文字を1個
-- 危険・大人向けの話題は「それはむずかしいな！別のことを話そう！」と返す
-
-【問い返しルール】
-- 最後の問いかけは、答えた内容から派生した具体的な質問にすること
-  ✅ 良い例：「海には何種類くらいの生き物がいると思う？」
-  ✅ 良い例：「川と海の水は何が違うかな？」
-  ❌ 悪い例：「なんでだと思う？」（漠然としすぎるので使わない）
-
-【回答の型】
-①答えを伝える → ②具体例・理由 → ③話題から派生した問いかけ`;
-    }
-
-    if (grade === "小学3年生") {
-        return `あなたは「AIせんせい」です。小学3年生（8〜9歳）と話しています。
-
-【重要】ふりがな付与はシステムが自動で行います。漢字をそのまま使って自然な文章を書いてください。
-
-【最優先ルール】
-- 質問には必ず具体的に答えること
-- 「なぜなら〜」の形で理由も説明する
-
-【返答ルール】
-- 返答は220文字以内
-- 共感から始める（「それ、おもしろい！」「いい質問だね！」）
-- 丁寧だが親しみやすいトーンで話す
-- 絵文字は任意（使うなら1個）
-- 危険・大人向けの話題は「その話はちょっとむずかしいな。別のことを話そう！」と返す
-
-【問い返しルール】
-- 最後の問いかけは、答えた内容から1歩踏み込んだ具体的な問いにすること
-  ✅ 良い例：「海の水が蒸発して雨になることを知ってる？これを何というか知ってる？」
-  ✅ 良い例：「地球の水の量は昔も今も同じなんだって！不思議だよね？なんでかな？」
-  ❌ 悪い例：「どう思う？」（使わない）
-
-【回答の型】
-①共感 → ②答えと理由 → ③話題から深めた具体的な問いかけ`;
-    }
-
-    if (grade === "小学4年生") {
-        return `あなたは「AIせんせい」です。小学4年生（9〜10歳）と話しています。
-
-【重要】ふりがな付与はシステムが自動で行います。漢字をそのまま使って自然な文章を書いてください。
-
-【最優先ルール】
-- 質問には必ず答えること
-- ソクラテス式：「答え → 背景知識 → 派生した問いかけ」の3段構成
-
-【返答ルール】
-- 返答は250文字以内
-- 論理的だが親しみやすいトーンで話す
-- 生活と結びつけた例を使う（天気・スポーツ・食べ物など）
-- 絵文字は任意（使うなら1個）
-- 危険・大人向けの話題は「その質問は少しむずかしいな。別のことを話そう！」と返す
-
-【問い返しルール】
-- 最後の問いかけは、答えた内容の「次の疑問」になる具体的な問いにすること
-  ✅ 良い例：「地球の水のうち、人が飲める水は全体の何%くらいだと思う？」
-  ✅ 良い例：「海水を飲み水にする技術があるんだけど、どうやって作ると思う？」
-  ❌ 悪い例：「どんなことが関係していると思う？」（漠然としすぎ）
-
-【回答の型】
-①明確な答え → ②理由と例 → ③答えから自然に湧く次の疑問`;
-    }
-
-    if (grade === "小学5年生") {
-        return `あなたは「AIせんせい」です。小学5年生（10〜11歳）と話しています。
-
-【重要】ふりがな付与はシステムが自動で行います。漢字をそのまま使って自然な文章を書いてください。
-
-【最優先ルール】
-- 質問には必ず具体的に答えること
-- 「事実 → なぜそうなるか → 別の視点」の流れで展開する
-
-【返答ルール】
-- 返答は280文字以内
-- 論理的で対話的なトーンで話す
-- 複数の視点を示し、考えさせる
-- 比較・例え話を積極的に使う
-- 絵文字は基本的に使わない（使うなら1個まで）
-- 危険・大人向けの話題は「その質問は少しむずかしいな。別のことを話そう！」と返す
-
-【問い返しルール】
-- 最後の問いかけは、話題をさらに深めるか、別の角度から見る具体的な問いにすること
-  ✅ 良い例：「地球の水の97.5%は海水だけど、残り2.5%の内訳を調べてみると面白いよ。どこにあると思う？」
-  ✅ 良い例：「水が循環する仕組みを『水循環』というけど、もし地球に水循環がなかったらどうなると思う？」
-  ❌ 悪い例：「あなたはどう思う？」（使わない）
-
-【回答の型】
-①事実・答え → ②仕組みや理由 → ③話題を深める具体的な問いかけ`;
-    }
-
-    if (grade === "小学6年生") {
-        return `あなたは「AIせんせい」です。小学6年生（11〜12歳）と話しています。
-
-【重要】ふりがな付与はシステムが自動で行います。漢字をそのまま使って自然な文章を書いてください。
-
-【最優先ルール】
-- 質問には必ず答えること
-- 「事実の確認 → 多角的な視点 → 深い問い返し」の3段構成
-
-【返答ルール】
-- 返答は300文字以内
-- 知的好奇心を刺激する対話的なトーンで話す
-- 中学・高校で学ぶ内容への橋渡しになるような説明をする
-- 絵文字は使わない
-- 危険・大人向けの話題は「その質問は少しむずかしいな。別のことを話そう！」と返す
-
-【問い返しルール】
-- 最後の問いかけは「答えの先にある問い」を示す深い問いにすること
-  ✅ 良い例：「地球に水が存在する理由は太陽との距離が関係しているんだけど、もし地球がもっと太陽に近かったら水はどうなると思う？」
-  ✅ 良い例：「海水面の上昇が問題になっているけど、それが生活にどんな影響を与えると思う？」
-  ❌ 悪い例：「なぜそう思う？」（使わない）
-
-【回答の型】
-①明確な答えと根拠 → ②多角的な視点 → ③答えの先にある深い問い`;
-    }
-
-    // デフォルト
-    return `あなたは「AIせんせい」です。小学生と話しています。
-【最優先ルール】質問には必ず答えること。答えた後に、話題から派生した具体的な問いかけをする。「どう思う？」は使わない。
-返答は200文字以内。難しい漢字にはふりがなをつける。丁寧で親しみやすく。`;
+    // 小学3年生以上：基本的にルビなし
+    return text.replace(/([\u4e00-\u9faf々\u30a0-\u30ffA-Za-zａ-ｚＡ-Ｚ0-9０-９\-]+)[(（]([\u3040-\u309f\u30a0-\u30ff]+)[)）]/g, '$1');
 }
 
-// ============================================================
-// POST ハンドラー
-// ============================================================
+/**
+ * 小学1年生用の処理
+ */
+function processForGrade1(text: string): string {
+    return text.replace(/([\u4e00-\u9faf々\u30a0-\u30ffA-Za-zａ-ｚＡ-Ｚ0-9０-９\-]+)[(（]([\u3040-\u309f\u30a0-\u30ff]+)[)）]/g, (match: string, kanji: string, yomi: string) => {
+
+        // 1. 特殊読みリストにある場合は強制的にルビ
+        if (FORCE_RUBY_WORDS.has(kanji)) {
+            return `<ruby>${kanji}<rt>${yomi}</rt></ruby>`;
+        }
+
+        // 2. すべて1年生漢字かチェック
+        const isAllGrade1 = Array.from(kanji).every(char => GRADE1_KANJI.has(char));
+
+        // 3. すべて1年生漢字なら括弧を除去（ルビなし）
+        if (isAllGrade1) {
+            return kanji;
+        }
+
+        // 4. 未習漢字が含まれる場合はルビ化
+        return `<ruby>${kanji}<rt>${yomi}</rt></ruby>`;
+    });
+}
+
+/**
+ * 小学2年生用の処理
+ */
+function processForGrade2(text: string): string {
+    return text.replace(/([\u4e00-\u9faf々\u30a0-\u30ffA-Za-zａ-ｚＡ-Ｚ0-9０-９\-]+)[(（]([\u3040-\u309f\u30a0-\u30ff]+)[)）]/g, (match: string, kanji: string, yomi: string) => {
+
+        // 特殊読みは強制ルビ
+        if (FORCE_RUBY_WORDS.has(kanji)) {
+            return `<ruby>${kanji}<rt>${yomi}</rt></ruby>`;
+        }
+
+        // 1-2年生漢字のみで構成されているかチェック
+        const isAllGrade1or2 = Array.from(kanji).every(char =>
+            GRADE1_KANJI.has(char) || GRADE2_KANJI.has(char)
+        );
+
+        if (isAllGrade1or2) {
+            return kanji;
+        }
+
+        return `<ruby>${kanji}<rt>${yomi}</rt></ruby>`;
+    });
+}
+
+/**
+ * JSON内の全テキストフィールドを再帰的に処理
+ */
+function applyRubyToJSON(obj: unknown, grade: string): unknown {
+    if (typeof obj === 'string') {
+        return processTextResponse(String(obj), grade);
+    }
+
+    if (Array.isArray(obj)) {
+        return obj.map(item => applyRubyToJSON(item, grade));
+    }
+
+    if (obj !== null && typeof obj === 'object') {
+        const result: Record<string, unknown> = {};
+        for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
+            result[key] = applyRubyToJSON(value, grade);
+        }
+        return result;
+    }
+
+    return obj;
+}
+
+// =========================================================
+// ★★★ システムプロンプト：括弧書き強制 ★★★
+// =========================================================
+function getModeSystemPrompt(mode: LearningMode, grade: string): string {
+
+    const baseOutputRule = grade.includes("年少") || grade.includes("年中") || grade.includes("年長")
+        ? `
+【出力ルール】
+- 基本的に「ひらがな」だけで話してください
+- 難しい言葉は使わないでください
+- HTMLタグは絶対に使わないでください`
+        : `
+【出力ルール - 重要】
+- **すべての漢字に読み仮名を括弧「( )」でつけてください**
+- 例: 学校(がっこう)、右(みぎ)、勉強(べんきょう)、一生懸命(いっしょうけんめい)
+- 1年生の漢字であっても、必ず括弧書きで読みをつけてください
+- **HTMLタグ（<ruby>など）は絶対に使わないでください**`;
+
+    const factCheckingRule = `
+【事実確認ルール - 非常に重要】
+- 自分の記憶にない最新の情報や事実確認が必要な質問を受けた場合は、必ず \`googleSearch\` ツールを使用して、検索結果をもとに正確に回答してください。
+- 嘘（ハルシネーション）は厳禁です。分からない場合は知ったかぶりをせず、検索をしてから回答してください。`;
+
+    const outputRule = baseOutputRule + factCheckingRule;
+
+    let rolePrompt = "";
+
+    switch (mode) {
+        case "kokugo":
+            rolePrompt = `あなたは「AIせんせい・国語の先生」です。対象学年: ${grade}
+子どもがテーマや漢字を入力したら、その漢字を使った楽しいショートストーリーを作り、
+漢字の読み方・意味・例文と、理解を確認するクイズを含めてください。
+必ずJSONフォーマットで返してください。`;
+            break;
+
+        case "sansu":
+            rolePrompt = `あなたは「AIせんせい・算数の先生」です。対象学年: ${grade}
+子どもの質問に対して、わかりやすい説明・練習問題・ヒント・答え・解き方のステップをJSONで返してください。`;
+            break;
+
+        case "shakai":
+            rolePrompt = `あなたは「AIせんせい・社会の先生」です。対象学年: ${grade}
+社会のしくみ・地理・歴史などについて、身近な例を使ったストーリーと
+3つのキーポイント、クイズをJSONで返してください。`;
+            break;
+
+        case "rika":
+            rolePrompt = `あなたは「AIせんせい・理科の先生」です。対象学年: ${grade}
+科学的な現象や自然の不思議について、「なぜそうなるか」の説明・
+家でできる実験アイデア・びっくり豆知識・クイズをJSONで返してください。`;
+            break;
+
+        case "dotoku":
+            rolePrompt = `あなたは「AIせんせい・道徳の先生」です。対象学年: ${grade}
+日常のシナリオを提示し、「あなたならどうする？」と問いかけます。
+複数の選択肢それぞれの結果と学びを示し、最後に温かいメッセージをJSONで返してください。`;
+            break;
+
+        case "jitsugaku":
+            rolePrompt = `あなたは「AIせんせい・実学の先生」です。対象学年: ${grade}
+お金・税金・株・政治・法律など「学校では教えてくれない本当に大切な知識」を、
+子どもでも理解できる言葉で教えます。`;
+            break;
+
+        default:
+            rolePrompt = getDefaultChatPrompt(grade);
+            break;
+    }
+
+    return `${rolePrompt}\n${outputRule}`;
+}
+
+function getDefaultChatPrompt(grade: string): string {
+    if (grade.includes("年少") || grade.includes("年中") || grade.includes("年長")) {
+        return `あなたは未就学児のための「AIせんせい」です。
+1. やさしく、ひらがなをメインに話す
+2. 1回の返答は100文字以内
+3. 語尾は「〜だよ」「〜だね」など
+4. 絵文字を1〜2個使う
+5. 最後に簡単な質問をする`;
+    }
+
+    if (grade.includes("小学1年生")) {
+        return `あなたは小学1年生のための「AIせんせい」です。
+1. 質問にはやさしく答える
+2. 1回の返答は150文字以内
+3. 語尾は「〜だよ」「〜だね」など
+4. 絵文字を1〜2個使う
+5. 最後に具体的な質問をする`;
+    }
+
+    if (grade.includes("小学2年生")) {
+        return `あなたは小学2年生のための「AIせんせい」です。
+1. 質問には丁寧に答える
+2. 1回の返答は200文字以内
+3. 語尾は「〜だよ」「〜だね」など親しみやすい口調
+4. 絵文字を1〜2個使う`;
+    }
+
+    return `あなたは小学生のための「AIせんせい」です。
+1. 質問にわかりやすく答える
+2. 1回の返答は300文字以内
+3. 最後に問いかけをする`;
+}
+
+// =========================================================
+// メインのAPIハンドラー
+// =========================================================
 export async function POST(req: NextRequest) {
     try {
-        const body = await req.json();
-        const { message, grade, history } = body;
+        const { message, grade, history, mode = "chat" } = await req.json() as {
+            message: string;
+            grade: string;
+            history: { sender: string; text: string }[];
+            mode: LearningMode;
+        };
 
-        console.log("[chat] grade:", JSON.stringify(grade), "| msg:", message?.slice(0, 40));
-
-        if (!message || typeof message !== "string" || message.trim() === "") {
-            return NextResponse.json({ error: "メッセージが無効です" }, { status: 400 });
+        if (!message?.trim()) {
+            return NextResponse.json({ error: "メッセージが空です" }, { status: 400 });
         }
 
-        // ── 会話履歴を構築
-        const recentHistory = Array.isArray(history) ? history.slice(-10) : [];
-        const contents: Array<{ role: string; parts: Array<{ text: string }> }> = [];
-
-        for (const msg of recentHistory) {
+        // 会話履歴の構築
+        const contents: Content[] = [];
+        for (const msg of (history ?? []).slice(-8)) {
             const role = msg.sender === "user" ? "user" : "model";
-            const text = (msg.text ?? "").trim();
-            if (!text) continue;
-            // 今送るメッセージと同じuserメッセージは二重登録しない
-            if (role === "user" && text === message.trim()) continue;
-            contents.push({ role, parts: [{ text }] });
+            // 履歴からrubyタグを除去してAIには生テキストを渡す
+            const cleanText = msg.text.replace(/<ruby>.*?<rt>.*?<\/rt><\/ruby>/g, (match) => {
+                const kanjiMatch = match.match(/<ruby>(.*?)<rt>/);
+                return kanjiMatch ? kanjiMatch[1] : match;
+            });
+            contents.push({ role, parts: [{ text: cleanText }] });
         }
-        contents.push({ role: "user", parts: [{ text: message.trim() }] });
+        contents.push({ role: "user", parts: [{ text: message }] });
 
-        // ── Gemini 呼び出し
-        const systemPromptText = getSystemPrompt(grade ?? "");
-        console.log("[chat] systemPrompt preview:", systemPromptText.slice(0, 60));
+        const systemPrompt = getModeSystemPrompt(mode as LearningMode, grade ?? "");
 
-        const response = await ai.models.generateContent({
+        // 現在の日付を取得してシステムプロンプトの先頭に追加
+        const now = new Date();
+        const currentDateStr = `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日`;
+        const finalSystemPrompt = `【現在の日時情報】本日の日付は${currentDateStr}です。\n\n${systemPrompt}`;
+
+        const schema = RESPONSE_SCHEMAS[mode as LearningMode];
+
+        const generationConfig = schema
+            ? {
+                responseMimeType: "application/json",
+                responseSchema: schema,
+            }
+            : undefined;
+
+        const tools = [{
+            functionDeclarations: [
+                {
+                    name: "googleSearch",
+                    description: "Googleで最新の情報を検索します。ユーザーから最新の出来事や、自分の知識にない事実について聞かれたときに使用してください。",
+                    parameters: {
+                        type: "OBJECT",
+                        properties: {
+                            query: {
+                                type: "STRING",
+                                description: "検索クエリ。例: '今日の天気', '最新のニュース', '〇〇について'"
+                            }
+                        },
+                        required: ["query"]
+                    }
+                }
+            ]
+        }];
+
+        let response: GenerateContentResponse = await ai.models.generateContent({
             model: "gemini-2.5-flash",
             contents,
             config: {
-                systemInstruction: systemPromptText,
+                systemInstruction: finalSystemPrompt,
+                tools: tools as any,
+                ...(generationConfig ?? {}),
             },
         });
 
-        const rawReply = response.text ?? "";
-        console.log("[chat] rawReply:", rawReply.slice(0, 80));
+        // =========================================================
+        // Function Calling の処理ループ
+        // =========================================================
+        while (response.functionCalls && response.functionCalls.length > 0) {
+            const call = response.functionCalls[0];
 
-        if (!rawReply) {
-            return NextResponse.json(
-                { error: "AIせんせいから返事がきませんでした。もう一度試してね！" },
-                { status: 500 }
-            );
-        }
+            if (call.name === "googleSearch") {
+                const query = call.args?.query as string;
+                console.log(`[Function Calling] googleSearch triggered with query: ${query}`);
 
-        // ── ふりがな付与（失敗してもAI回答は返す）
-        let finalReply = rawReply;
-        try {
-            const gradeNum = gradeToNumber(grade ?? "");
-            if (gradeNum > 0) {
-                finalReply = await addFuriganaByGrade(rawReply, gradeNum);
+                const searchResult = await googleSearch(query);
+
+                // 元の返答履歴に追加
+                if (response.candidates && response.candidates[0].content) {
+                    contents.push(response.candidates[0].content as Content);
+                }
+
+                // 検索結果をモデルに返す
+                contents.push({
+                    role: "user", // @google/genaiでは、toolの返答はuser roleでpartsにfunctionResponseを入れる
+                    parts: [{
+                        functionResponse: {
+                            name: "googleSearch",
+                            response: { result: searchResult }
+                        }
+                    }]
+                });
+
+                // もう一度推論を実行
+                response = await ai.models.generateContent({
+                    model: "gemini-2.5-flash",
+                    contents,
+                    config: {
+                        systemInstruction: finalSystemPrompt,
+                        tools: tools as any,
+                        ...(generationConfig ?? {}),
+                    },
+                });
+            } else {
+                break; // 知らない関数が呼ばれたら終了
             }
-        } catch (furiganaErr) {
-            console.warn("[chat] furigana failed:", furiganaErr);
         }
 
-        // ── 改行付与（。！？の後に改行）
-        finalReply = addLineBreaks(finalReply);
+        // テキストを確実にstringとして取得
+        const rawText: string = String(response.text ?? "");
+        const safeGrade: string = String(grade ?? "");
 
-        return NextResponse.json({ reply: finalReply });
+        // ★★★ バックエンドで括弧書きを処理 ★★★
+
+        // chatモードの処理
+        if (mode === "chat") {
+            const processedText = processTextResponse(rawText, safeGrade);
+            return NextResponse.json({ mode: "chat", reply: processedText });
+        }
+
+        // 構造化モードの処理
+        try {
+            const parsed = JSON.parse(rawText);
+            const processedData = applyRubyToJSON(parsed, safeGrade);
+            return NextResponse.json({ mode, data: processedData });
+        } catch {
+            const processedText = processTextResponse(rawText, safeGrade);
+            return NextResponse.json({ mode: "chat", reply: processedText });
+        }
 
     } catch (error: unknown) {
-        console.error("[chat] Error:", error);
-        const err = error as { status?: number; message?: string };
-
-        if (
-            err?.status === 429 ||
-            err?.message?.includes("429") ||
-            err?.message?.includes("quota")
-        ) {
-            return NextResponse.json(
-                { error: "少し時間をおいてから、もう一度試してね！" },
-                { status: 429 }
-            );
-        }
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error("[API/chat] Error:", errorMessage);
         return NextResponse.json(
-            { error: "AIせんせいとつながれませんでした。" },
+            { error: "AIせんせいが困っています。もう一度試してね！", reply: "AIせんせいが困っています。もう一度試してね！" },
             { status: 500 }
         );
     }

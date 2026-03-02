@@ -39,19 +39,19 @@ function getInitialMessage(grade: string): string {
         case '年長（5歳）':
             return 'こんにちは！⭐\nきょうはどんなことをおはなしする？';
         case '小学1年生':
-            return 'こんにちは！AIせんせいだよ。\nきょうはどんなことをおはなしする？';
+            return 'こんにちは！AI(あい)せんせいだよ。\nきょうはどんなことをおはなしする？';
         case '小学2年生':
-            return 'こんにちは！AIせんせいだよ。\nきょうはどんなことを話したい？';
+            return 'こんにちは！AI(あい)先生だよ。\nきょうはどんなことを話したい？';
         case '小学3年生':
-            return 'こんにちは！AI先生だよ。\n今日はどんなことを話したい？';
+            return 'こんにちは！AI(あい)先生だよ。\n今日はどんなことを話したい？';
         case '小学4年生':
-            return 'こんにちは！AI先生だよ。\n今日はどんなことについて考えてみる？';
+            return 'こんにちは！AI(あい)先生だよ。\n今日はどんなことについて考えてみる？';
         case '小学5年生':
-            return 'こんにちは！AI先生だよ。\n今日はどんなテーマで話してみる？';
+            return 'こんにちは！AI(あい)先生だよ。\n今日はどんなテーマで話してみる？';
         case '小学6年生':
-            return 'こんにちは！AI先生だよ。\n今日はどんな話題に挑戦してみようか？';
+            return 'こんにちは！AI(あい)先生だよ。\n今日はどんな話題に挑戦してみようか？';
         default:
-            return 'こんにちは！AI先生だよ。\n今日はどんなことをお話しする？';
+            return 'こんにちは！AI(あい)先生だよ。\n今日はどんなことをお話しする？';
     }
 }
 
@@ -344,9 +344,16 @@ export default function ChatPage() {
                                 ? 'bg-white border-gray-100 text-gray-800 rounded-tl-none'
                                 : 'bg-[#4285F4] border-blue-500 text-white rounded-tr-none'
                                 }`}>
-                                <p className="leading-relaxed whitespace-pre-wrap font-medium">
-                                    {msg.text}
-                                </p>
+                                {msg.sender === 'ai' ? (
+                                    <p
+                                        className="leading-[2.5] whitespace-pre-wrap font-medium [&_rt]:text-[0.75em] [&_rt]:font-medium [&_ruby]:mx-[1px]"
+                                        dangerouslySetInnerHTML={{ __html: msg.text }}
+                                    />
+                                ) : (
+                                    <p className="leading-relaxed whitespace-pre-wrap font-medium">
+                                        {msg.text}
+                                    </p>
+                                )}
                             </div>
                         </div>
                     );

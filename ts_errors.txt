@@ -1,0 +1,7 @@
+app/api/chat/route.ts(518,13): error TS2353: Object literal may only specify known properties, and 'tools' does not exist in type 'GenerateContentParameters'.
+app/api/chat/route.ts(539,35): error TS2345: Argument of type 'Content' is not assignable to parameter of type '{ role: string; parts: { text: string; }[]; }'.
+  Types of property 'role' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+app/api/chat/route.ts(546,25): error TS2353: Object literal may only specify known properties, and 'functionResponse' does not exist in type '{ text: string; }'.
+app/api/chat/route.ts(557,21): error TS2353: Object literal may only specify known properties, and 'tools' does not exist in type 'GenerateContentParameters'.
