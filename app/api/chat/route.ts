@@ -1,9 +1,9 @@
 // app/api/chat/route.ts
 
-import { GoogleGenAI, GenerateContentResponse, Content } from "@google/genai";
+import { GoogleGenerativeAI, Content } from "@google/generative-ai";
 import { NextRequest, NextResponse } from "next/server";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
+const ai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
 
 // =========================================================
 // 関数：Google カスタム検索
@@ -355,16 +355,19 @@ function getModeSystemPrompt(mode: LearningMode, grade: string): string {
 - 難しい言葉は使わないでください
 - HTMLタグは絶対に使わないでください`
         : `
-【出力ルール - 重要】
-- **すべての漢字に読み仮名を括弧「( )」でつけてください**
-- 例: 学校(がっこう)、右(みぎ)、勉強(べんきょう)、一生懸命(いっしょうけんめい)
-- 1年生の漢字であっても、必ず括弧書きで読みをつけてください
-- **HTMLタグ（<ruby>など）は絶対に使わないでください**`;
+【出力ルール - 1年生の先生ルールを徹底】
+- 漢字には必ずカッコで読みをつけてください。例：漢字(かんじ)、学校(がっこう)
+- カタカナ・数字・英語には絶対に読み（カッコ書き）をつけないでください。これは「1年生の先生ルール」として死守してください。
+- ❌悪い例: テレビ(てれび)、3(さん)、AI(えーあい) -> カタカナ・数字・英語にルビはダメ！
+- ⭕良い例: テレビ、3、AI
+- 「ニ(ツ)」「2(ツー)」のような出力は厳禁です。
+- HTMLタグ（<ruby>など）は絶対に使わず、必ず 漢字(よみがな) の形式で出力してください。`;
 
     const factCheckingRule = `
-【事実確認ルール - 非常に重要】
-- 自分の記憶にない最新の情報や事実確認が必要な質問を受けた場合は、必ず \`googleSearch\` ツールを使用して、検索結果をもとに正確に回答してください。
-- 嘘（ハルシネーション）は厳禁です。分からない場合は知ったかぶりをせず、検索をしてから回答してください。`;
+【事実確認とキャラクター維持ルール - 死守】
+- 最新の話題や情報（ゲームの新作、最新ニュースなど）は、自分の記憶で答える前に、必ず「googleSearch」を使って検索し、その結果をもとに答えてください。
+- 検索結果を回答する場合でも、AIせんせいのキャラクター（**小学1年生の目線に立った、常にやさしく共感的な口調**）を絶対に崩さないでください。ハルシネーションは厳禁です。
+- ルビのルール（1年生の先生ルール）も、検索結果を話す際に必ず適用し厳守してください。`;
 
     const outputRule = baseOutputRule + factCheckingRule;
 
@@ -375,36 +378,36 @@ function getModeSystemPrompt(mode: LearningMode, grade: string): string {
             rolePrompt = `あなたは「AIせんせい・国語の先生」です。対象学年: ${grade}
 子どもがテーマや漢字を入力したら、その漢字を使った楽しいショートストーリーを作り、
 漢字の読み方・意味・例文と、理解を確認するクイズを含めてください。
-必ずJSONフォーマットで返してください。`;
+常にやさしく、共感的な口調で、必ずJSONフォーマットで返してください。`;
             break;
 
         case "sansu":
             rolePrompt = `あなたは「AIせんせい・算数の先生」です。対象学年: ${grade}
-子どもの質問に対して、わかりやすい説明・練習問題・ヒント・答え・解き方のステップをJSONで返してください。`;
+子どもの質問に対して、常にやさしく共感的に、わかりやすい説明・練習問題・ヒント・答え・解き方のステップをJSONで返してください。`;
             break;
 
         case "shakai":
             rolePrompt = `あなたは「AIせんせい・社会の先生」です。対象学年: ${grade}
-社会のしくみ・地理・歴史などについて、身近な例を使ったストーリーと
+社会のしくみ・地理・歴史などについて、常にやさしく共感的に、身近な例を使ったストーリーと
 3つのキーポイント、クイズをJSONで返してください。`;
             break;
 
         case "rika":
             rolePrompt = `あなたは「AIせんせい・理科の先生」です。対象学年: ${grade}
-科学的な現象や自然の不思議について、「なぜそうなるか」の説明・
+科学的な現象や自然の不思議について、常にやさしく共感的に、「なぜそうなるか」の説明・
 家でできる実験アイデア・びっくり豆知識・クイズをJSONで返してください。`;
             break;
 
         case "dotoku":
             rolePrompt = `あなたは「AIせんせい・道徳の先生」です。対象学年: ${grade}
-日常のシナリオを提示し、「あなたならどうする？」と問いかけます。
+常にやさしく共感的に日常のシナリオを提示し、「あなたならどうする？」と問いかけます。
 複数の選択肢それぞれの結果と学びを示し、最後に温かいメッセージをJSONで返してください。`;
             break;
 
         case "jitsugaku":
             rolePrompt = `あなたは「AIせんせい・実学の先生」です。対象学年: ${grade}
 お金・税金・株・政治・法律など「学校では教えてくれない本当に大切な知識」を、
-子どもでも理解できる言葉で教えます。`;
+常にやさしく共感的に、子どもでも理解できる言葉で教えます。JSONで返してください。`;
             break;
 
         default:
@@ -416,36 +419,36 @@ function getModeSystemPrompt(mode: LearningMode, grade: string): string {
 }
 
 function getDefaultChatPrompt(grade: string): string {
+    const basePersona = `
+【キャラクター設定 - 厳守】
+- **小学1年生の目線に立ち、常にやさしく、共感的**であること。
+- 「inquiring face」といったテキスト表現ではなく、実際の絵文字（🤔✨など）を1〜2個だけ使用すること。
+- 回答の最後は、必ず「今日のご飯は何かな？」「足は何本かな？」のように、**その話題をさらに広げる具体的な質問**で締めること。「次はどんなことを聞く？」「他に質問はある？」といった抽象的な問いかけは禁止です。`;
+
     if (grade.includes("年少") || grade.includes("年中") || grade.includes("年長")) {
-        return `あなたは未就学児のための「AIせんせい」です。
+        return `あなたは未就学児のための「AIせんせい」です。${basePersona}
 1. やさしく、ひらがなをメインに話す
 2. 1回の返答は100文字以内
-3. 語尾は「〜だよ」「〜だね」など
-4. 絵文字を1〜2個使う
-5. 最後に簡単な質問をする`;
+3. 語尾は「〜だよ」「〜だね」など`;
     }
 
     if (grade.includes("小学1年生")) {
-        return `あなたは小学1年生のための「AIせんせい」です。
+        return `あなたは小学1年生のための「AIせんせい」です。${basePersona}
 1. 質問にはやさしく答える
 2. 1回の返答は150文字以内
-3. 語尾は「〜だよ」「〜だね」など
-4. 絵文字を1〜2個使う
-5. 最後に具体的な質問をする`;
+3. 語尾は「〜だよ」「〜だね」など`;
     }
 
     if (grade.includes("小学2年生")) {
-        return `あなたは小学2年生のための「AIせんせい」です。
+        return `あなたは小学2年生のための「AIせんせい」です。${basePersona}
 1. 質問には丁寧に答える
 2. 1回の返答は200文字以内
-3. 語尾は「〜だよ」「〜だね」など親しみやすい口調
-4. 絵文字を1〜2個使う`;
+3. 語尾は「〜だよ」「〜だね」など親しみやすい口調`;
     }
 
-    return `あなたは小学生のための「AIせんせい」です。
+    return `あなたは小学生のための「AIせんせい」です。${basePersona}
 1. 質問にわかりやすく答える
-2. 1回の返答は300文字以内
-3. 最後に問いかけをする`;
+2. 1回の返答は300文字以内`;
 }
 
 // =========================================================
@@ -467,7 +470,7 @@ export async function POST(req: NextRequest) {
         // 会話履歴の構築
         const contents: Content[] = [];
         for (const msg of (history ?? []).slice(-8)) {
-            const role = msg.sender === "user" ? "user" : "model";
+            const role = (msg.sender === "user" ? "user" : "model") as "user" | "model";
             // 履歴からrubyタグを除去してAIには生テキストを渡す
             const cleanText = msg.text.replace(/<ruby>.*?<rt>.*?<\/rt><\/ruby>/g, (match) => {
                 const kanjiMatch = match.match(/<ruby>(.*?)<rt>/);
@@ -475,7 +478,7 @@ export async function POST(req: NextRequest) {
             });
             contents.push({ role, parts: [{ text: cleanText }] });
         }
-        contents.push({ role: "user", parts: [{ text: message }] });
+        contents.push({ role: "user" as "user" | "model", parts: [{ text: message }] });
 
         const systemPrompt = getModeSystemPrompt(mode as LearningMode, grade ?? "");
 
@@ -489,59 +492,57 @@ export async function POST(req: NextRequest) {
         const generationConfig = schema
             ? {
                 responseMimeType: "application/json",
-                responseSchema: schema,
+                responseSchema: schema as any,
             }
             : undefined;
 
-        const tools = [{
-            functionDeclarations: [
-                {
-                    name: "googleSearch",
-                    description: "Googleで最新の情報を検索します。ユーザーから最新の出来事や、自分の知識にない事実について聞かれたときに使用してください。",
-                    parameters: {
-                        type: "OBJECT",
-                        properties: {
-                            query: {
-                                type: "STRING",
-                                description: "検索クエリ。例: '今日の天気', '最新のニュース', '〇〇について'"
-                            }
-                        },
-                        required: ["query"]
+        const googleSearchDeclaration = {
+            name: "googleSearch",
+            description: "Googleで最新の情報を検索します。ユーザーから最新のゲーム（Switch 2やポケモンの新作など）や、最新の出来事、自分の知識や記憶に自信がない事実について聞かれたときに必ず使用してください。",
+            parameters: {
+                type: "OBJECT",
+                properties: {
+                    query: {
+                        type: "STRING",
+                        description: "検索クエリ。例: '今日の天気', 'Switch 2 発売日', '〇〇について'"
                     }
-                }
-            ]
-        }];
+                },
+                required: ["query"]
+            }
+        };
 
-        let response: GenerateContentResponse = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
+        const model = ai.getGenerativeModel({
+            model: "gemini-1.5-flash",
+            tools: [{ functionDeclarations: [googleSearchDeclaration as any] }],
+            systemInstruction: finalSystemPrompt
+        });
+
+        let result = await model.generateContent({
             contents,
-            config: {
-                systemInstruction: finalSystemPrompt,
-                tools: tools as any,
-                ...(generationConfig ?? {}),
-            },
+            ...(generationConfig ? { generationConfig: generationConfig as any } : {}),
         });
 
         // =========================================================
         // Function Calling の処理ループ
         // =========================================================
-        while (response.functionCalls && response.functionCalls.length > 0) {
-            const call = response.functionCalls[0];
+        let calls = result.response.functionCalls();
+        while (calls && calls.length > 0) {
+            const call = calls[0];
 
             if (call.name === "googleSearch") {
-                const query = call.args?.query as string;
+                const { query } = call.args as { query: string };
                 console.log(`[Function Calling] googleSearch triggered with query: ${query}`);
 
                 const searchResult = await googleSearch(query);
 
                 // 元の返答履歴に追加
-                if (response.candidates && response.candidates[0].content) {
-                    contents.push(response.candidates[0].content as Content);
+                if (result.response.candidates && result.response.candidates[0].content) {
+                    contents.push(result.response.candidates[0].content as Content);
                 }
 
                 // 検索結果をモデルに返す
                 contents.push({
-                    role: "user", // @google/genaiでは、toolの返答はuser roleでpartsにfunctionResponseを入れる
+                    role: "function" as "user" | "model",
                     parts: [{
                         functionResponse: {
                             name: "googleSearch",
@@ -551,22 +552,18 @@ export async function POST(req: NextRequest) {
                 });
 
                 // もう一度推論を実行
-                response = await ai.models.generateContent({
-                    model: "gemini-2.5-flash",
+                result = await model.generateContent({
                     contents,
-                    config: {
-                        systemInstruction: finalSystemPrompt,
-                        tools: tools as any,
-                        ...(generationConfig ?? {}),
-                    },
+                    ...(generationConfig ? { generationConfig: generationConfig as any } : {}),
                 });
+                calls = result.response.functionCalls();
             } else {
                 break; // 知らない関数が呼ばれたら終了
             }
         }
 
         // テキストを確実にstringとして取得
-        const rawText: string = String(response.text ?? "");
+        const rawText = (result.response.text() as string) || "";
         const safeGrade: string = String(grade ?? "");
 
         // ★★★ バックエンドで括弧書きを処理 ★★★
