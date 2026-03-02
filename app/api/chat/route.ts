@@ -511,7 +511,7 @@ export async function POST(req: NextRequest) {
 
         const model = ai.getGenerativeModel({
             model: "gemini-1.5-flash",
-            tools: [{ functionDeclarations: [googleSearchDeclaration] }],
+            tools: [{ functionDeclarations: [googleSearchDeclaration as any] }],
             systemInstruction: finalSystemPrompt
         });
 
