@@ -1,6 +1,6 @@
 // app/api/chat/route.ts
 
-import { GoogleGenerativeAI, Content } from "@google/generative-ai";
+import { GoogleGenerativeAI, Content, SchemaType } from "@google/generative-ai";
 import { NextRequest, NextResponse } from "next/server";
 
 const ai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
@@ -355,19 +355,17 @@ function getModeSystemPrompt(mode: LearningMode, grade: string): string {
 - 難しい言葉は使わないでください
 - HTMLタグは絶対に使わないでください`
         : `
-【出力ルール - 1年生の先生ルールを徹底】
-- 漢字には必ずカッコで読みをつけてください。例：漢字(かんじ)、学校(がっこう)
-- カタカナ・数字・英語には絶対に読み（カッコ書き）をつけないでください。これは「1年生の先生ルール」として死守してください。
-- ❌悪い例: テレビ(てれび)、3(さん)、AI(えーあい) -> カタカナ・数字・英語にルビはダメ！
-- ⭕良い例: テレビ、3、AI
+【出力ルール - 重要】
+- 漢字にはすべてカッコで読みをつけてください。例：漢字(かんじ)
+- カタカナ、数字、絵文字には絶対に読み（カッコ書き）をつけないでください。
 - 「ニ(ツ)」「2(ツー)」のような出力は厳禁です。
-- HTMLタグ（<ruby>など）は絶対に使わず、必ず 漢字(よみがな) の形式で出力してください。`;
+- HTMLタグ（<ruby>など）は絶対に使わず、必ず 単語(よみがな) の形式で出力してください。`;
 
     const factCheckingRule = `
-【事実確認とキャラクター維持ルール - 死守】
-- 最新の話題や情報（ゲームの新作、最新ニュースなど）は、自分の記憶で答える前に、必ず「googleSearch」を使って検索し、その結果をもとに答えてください。
-- 検索結果を回答する場合でも、AIせんせいのキャラクター（**小学1年生の目線に立った、常にやさしく共感的な口調**）を絶対に崩さないでください。ハルシネーションは厳禁です。
-- ルビのルール（1年生の先生ルール）も、検索結果を話す際に必ず適用し厳守してください。`;
+【事実確認とキャラクター維持ルール - 非常に重要】
+- ポケモンの新作やスイッチ2などの最新情報は、必ず自分の記憶ではなく googleSearch を使って調べてから答えてください。
+- 検索結果を回答する場合でも、AIせんせいのキャラクター（**小学1年生の目線に立った、常にやさしく共感的な口調**）を絶対に崩さないでください。嘘（ハルシネーション）は厳禁です。
+- ルビのルール（漢字にはカッコで読みをつける等）も、検索結果を話す際に必ず適用し厳守してください。`;
 
     const outputRule = baseOutputRule + factCheckingRule;
 
@@ -500,10 +498,10 @@ export async function POST(req: NextRequest) {
             name: "googleSearch",
             description: "Googleで最新の情報を検索します。ユーザーから最新のゲーム（Switch 2やポケモンの新作など）や、最新の出来事、自分の知識や記憶に自信がない事実について聞かれたときに必ず使用してください。",
             parameters: {
-                type: "OBJECT",
+                type: SchemaType.OBJECT,
                 properties: {
                     query: {
-                        type: "STRING",
+                        type: SchemaType.STRING,
                         description: "検索クエリ。例: '今日の天気', 'Switch 2 発売日', '〇〇について'"
                     }
                 },
@@ -513,7 +511,7 @@ export async function POST(req: NextRequest) {
 
         const model = ai.getGenerativeModel({
             model: "gemini-1.5-flash",
-            tools: [{ functionDeclarations: [googleSearchDeclaration as any] }],
+            tools: [{ functionDeclarations: [googleSearchDeclaration] }],
             systemInstruction: finalSystemPrompt
         });
 
@@ -542,7 +540,7 @@ export async function POST(req: NextRequest) {
 
                 // 検索結果をモデルに返す
                 contents.push({
-                    role: "function" as "user" | "model",
+                    role: "function" as any,
                     parts: [{
                         functionResponse: {
                             name: "googleSearch",
