@@ -5,7 +5,16 @@ import { GoogleGenAI, Type } from "@google/genai"; // ✅ Fix1: Type を追加
 import { NextRequest, NextResponse } from "next/server";
 
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+// グローバルでの初期化を削除（Vercelビルド時のエラーを防ぐため）
+// const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+
+function getGenerativeAI() {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+        throw new Error("GEMINI_API_KEY が設定されていません。");
+    }
+    return new GoogleGenAI({ apiKey });
+}
 
 
 // =========================================================
@@ -726,6 +735,7 @@ export async function POST(req: NextRequest) {
 
 
         // 第1回APIコール
+        const ai = getGenerativeAI();
         let response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
             contents,
