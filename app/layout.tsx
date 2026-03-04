@@ -3,6 +3,7 @@ import { M_PLUS_Rounded_1c } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 
+// ✅ 追加：ビルド時の静的生成を防ぐ（Clerk認証エラー解消）
 export const dynamic = 'force-dynamic';
 
 const mPlusRounded = M_PLUS_Rounded_1c({
