@@ -3,20 +3,7 @@
 import { GoogleGenAI, Type } from "@google/genai"; // ✅ Fix1: Type を追加
 import { NextRequest, NextResponse } from "next/server";
 
-// ✅ 【重要な修正】この1行を追加：ビルド時の静的生成を防ぐ設定
-export const dynamic = 'force-dynamic';
-
-// グローバルでの初期化を削除（Vercelビルド時のエラーを防ぐため）
-// const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
-
-function getGenerativeAI() {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-        throw new Error("GEMINI_API_KEY が設定されていません。");
-    }
-    return new GoogleGenAI({ apiKey });
-}
-
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 
 // =========================================================
 // モード定義
@@ -30,11 +17,9 @@ export type LearningMode =
     | "dotoku"
     | "jitsugaku";
 
-
 // =========================================================
 // 漢字セット定義
 // =========================================================
-
 
 /** 小学1年生で習う漢字（この学年の子にはふりがな不要） */
 const GRADE1_KANJI = new Set([
@@ -45,7 +30,6 @@ const GRADE1_KANJI = new Set([
     "男", "竹", "中", "虫", "町", "天", "田", "土", "二", "日", "入", "年", "白", "八",
     "百", "文", "木", "本", "名", "目", "立", "力", "林", "六",
 ]);
-
 
 /** 小学2年生で習う漢字（1年生にはふりがな必要）※「知」を含む */
 const GRADE2_KANJI = new Set([
@@ -63,11 +47,9 @@ const GRADE2_KANJI = new Set([
     "理", "話",
 ]);
 
-
 // 未使用変数のlintエラー抑止（将来の拡張用に保持）
 void GRADE1_KANJI;
 void GRADE2_KANJI;
-
 
 /** AIプロンプトに明示的に例示する「よく漏れる漢字」リスト */
 const FORCE_RUBY_EXAMPLES = [
@@ -79,22 +61,18 @@ const FORCE_RUBY_EXAMPLES = [
     { kanji: "親", reading: "おや", example: '<ruby>親<rt>おや</rt></ruby>' },
 ];
 
-
 // =========================================================
 // Brave Search 関数
 // =========================================================
 async function braveSearch(query: string): Promise<string> {
     const apiKey = process.env.BRAVE_SEARCH_API_KEY?.trim();
 
-
     if (!apiKey) {
         console.error("[braveSearch] BRAVE_SEARCH_API_KEY が設定されていません");
         return "検索エラー: APIキーが設定されていません。管理者に連絡してください。";
     }
 
-
     console.log(`[braveSearch] 検索クエリ: "${query}"`);
-
 
     try {
         const url = new URL("https://api.search.brave.com/res/v1/web/search");
@@ -103,7 +81,6 @@ async function braveSearch(query: string): Promise<string> {
         url.searchParams.set("search_lang", "jp");  // ✅ Fix4: "ja" → "jp"
         url.searchParams.set("country", "JP");
         // freshness は削除（天気など最新情報の取りこぼし防止）
-
 
         const res = await fetch(url.toString(), {
             headers: {
@@ -114,22 +91,18 @@ async function braveSearch(query: string): Promise<string> {
             cache: "no-store",
         });
 
-
         if (!res.ok) {
             const errorBody = await res.text().catch(() => "(取得不可)");
             console.error(`[braveSearch] HTTP ${res.status}:`, errorBody);
             return `検索エラー: HTTPステータス ${res.status}`;
         }
 
-
         const data = await res.json();
         console.log(
             `[braveSearch] 結果: web=${data.web?.results?.length ?? 0}, news=${data.news?.results?.length ?? 0}`
         );
 
-
         const parts: string[] = [];
-
 
         // ニュース
         if (data.news?.results?.length) {
@@ -149,7 +122,6 @@ async function braveSearch(query: string): Promise<string> {
             parts.push(`【最新ニュース】\n${items}`);
         }
 
-
         // ウェブ
         if (data.web?.results?.length) {
             const items = (
@@ -164,11 +136,9 @@ async function braveSearch(query: string): Promise<string> {
             parts.push(`【検索結果】\n${items}`);
         }
 
-
         if (parts.length === 0) {
             return `"${query}" に関する情報は見つかりませんでした。`;
         }
-
 
         return parts.join("\n\n");
     } catch (err) {
@@ -176,7 +146,6 @@ async function braveSearch(query: string): Promise<string> {
         return "検索中にエラーが発生しました。しばらくしてから再試行してください。";
     }
 }
-
 
 // =========================================================
 // 検索ツール宣言（Gemini Function Calling 用）
@@ -204,12 +173,10 @@ const SEARCH_TOOL = {
     ],
 };
 
-
 // =========================================================
 // 各モードのJSONスキーマ定義
 // =========================================================
 const RESPONSE_SCHEMAS: Partial<Record<LearningMode, object>> = {
-
 
     // ② 国語モード
     kokugo: {
@@ -246,7 +213,6 @@ const RESPONSE_SCHEMAS: Partial<Record<LearningMode, object>> = {
         required: ["story", "featured_kanji", "quiz"],
     },
 
-
     // ③ 算数モード
     sansu: {
         type: "object",
@@ -259,7 +225,6 @@ const RESPONSE_SCHEMAS: Partial<Record<LearningMode, object>> = {
         },
         required: ["explanation", "problem", "hint", "answer", "steps"],
     },
-
 
     // ④ 社会モード
     shakai: {
@@ -284,7 +249,6 @@ const RESPONSE_SCHEMAS: Partial<Record<LearningMode, object>> = {
         },
         required: ["topic", "story", "key_points", "quiz"],
     },
-
 
     // ⑤ 理科モード
     rika: {
@@ -311,7 +275,6 @@ const RESPONSE_SCHEMAS: Partial<Record<LearningMode, object>> = {
         required: ["phenomenon", "story", "experiment_idea", "fun_fact", "quiz"],
     },
 
-
     // ⑥ 道徳モード
     dotoku: {
         type: "object",
@@ -334,7 +297,6 @@ const RESPONSE_SCHEMAS: Partial<Record<LearningMode, object>> = {
         },
         required: ["scenario", "question", "choices", "teacher_comment"],
     },
-
 
     // ⑦ 実学モード
     jitsugaku: {
@@ -364,7 +326,6 @@ const RESPONSE_SCHEMAS: Partial<Record<LearningMode, object>> = {
     },
 };
 
-
 // =========================================================
 // ★★★ ふりがなルール（全モード共通）★★★
 // =========================================================
@@ -375,7 +336,6 @@ function getFuriganaRule(grade: string): string {
         grade.includes("年長") ||
         grade.includes("小学1年生");
 
-
     if (isGrade1OrBelow) {
         return `
 【ふりがなルール - 絶対に守ること】
@@ -384,15 +344,12 @@ function getFuriganaRule(grade: string): string {
 - 形式: <ruby>漢字<rt>ふりがな</rt></ruby>
 - 送り仮名はタグの外: <ruby>食<rt>た</rt></ruby>べる、<ruby>走<rt>はし</rt></ruby>る
 
-
 【特に注意！よく漏れる漢字 - 必ずrubyタグをつけること】
 ${FORCE_RUBY_EXAMPLES.map((e) => `  ✅ ${e.example}`).join("\n")}
-
 
 【禁止事項】
   ❌ 括弧形式: 知（し）や 好き（すき） → 絶対に使わない
   ❌ 同じ単語に2回以上ふりがなをつけない
-
 
 【1年生で習う漢字（これにはふりがな不要）】
 一 右 雨 円 王 音 下 火 花 貝 学 気 九 休 玉 金 空 月 犬 見 五 口 校
@@ -400,7 +357,6 @@ ${FORCE_RUBY_EXAMPLES.map((e) => `  ✅ ${e.example}`).join("\n")}
 石 赤 千 川 先 早 草 足 村 大 男 竹 中 虫 町 天 田 土 二 日 入 年 白
 八 百 文 木 本 名 目 立 力 林 六`;
     }
-
 
     if (grade.includes("小学2年生")) {
         return `
@@ -410,14 +366,12 @@ ${FORCE_RUBY_EXAMPLES.map((e) => `  ✅ ${e.example}`).join("\n")}
 - 括弧形式（〜）は絶対に使わない`;
     }
 
-
     return `
 【ふりがなルール】
 - ふりがなは基本不要
 - 特に難しい専門用語のみ <ruby> タグ使用可
 - 括弧形式（〜）は絶対に使わない`;
 }
-
 
 // =========================================================
 // ポストプロセス: ruby漏れを自動補正（1年生・未就学児向けのみ）
@@ -429,9 +383,7 @@ function processTextResponse(text: string, grade: string): string {
         grade.includes("年長") ||
         grade.includes("小学1年生");
 
-
     if (!isGrade1OrBelow) return text;
-
 
     // すでに <ruby> タグで囲まれている部分は除外して補正
     const corrections: Array<[RegExp, string]> = [
@@ -445,14 +397,12 @@ function processTextResponse(text: string, grade: string): string {
         [/(?<!<[^>]*>)強(?=い|く|さ|そ)/g, "<ruby>強<rt>つよ</rt></ruby>"],
     ];
 
-
     let result = text;
     for (const [pattern, replacement] of corrections) {
         result = result.replace(pattern, replacement);
     }
     return result;
 }
-
 
 /** JSONオブジェクトの全string値にruby補正を再帰適用 */
 function applyRubyToJSON(obj: unknown, grade: string): unknown {
@@ -469,13 +419,11 @@ function applyRubyToJSON(obj: unknown, grade: string): unknown {
     return obj;
 }
 
-
 // =========================================================
 // 各モードのシステムプロンプト
 // =========================================================
 function getModeSystemPrompt(mode: LearningMode, grade: string): string {
     const furiganaRule = getFuriganaRule(grade);
-
 
     switch (mode) {
         case "kokugo":
@@ -486,13 +434,11 @@ function getModeSystemPrompt(mode: LearningMode, grade: string): string {
 JSON内のすべてのテキストにも以下のふりがなルールを適用してください。
 ${furiganaRule}`;
 
-
         case "sansu":
             return `あなたは「AIせんせい・算数の先生」です。対象学年: ${grade}
 子どもの質問に対して、わかりやすい説明・練習問題・ヒント・答え・解き方のステップをJSONで返してください。
 答えはすぐに見えないようにして、まずヒントで考える機会を与えてください。
 ${furiganaRule}`;
-
 
         case "shakai":
             return `あなたは「AIせんせい・社会の先生」です。対象学年: ${grade}
@@ -500,20 +446,17 @@ ${furiganaRule}`;
 3つのキーポイント、クイズをJSONで返してください。
 ${furiganaRule}`;
 
-
         case "rika":
             return `あなたは「AIせんせい・理科の先生」です。対象学年: ${grade}
 科学的な現象や自然の不思議について、「なぜそうなるか」の説明・
 家でできる実験アイデア・びっくり豆知識・クイズをJSONで返してください。
 ${furiganaRule}`;
 
-
         case "dotoku":
             return `あなたは「AIせんせい・道徳の先生」です。対象学年: ${grade}
 日常のシナリオを提示し、「あなたならどうする？」と問いかけます。
 複数の選択肢それぞれの結果と学びを示し、最後に温かいメッセージをJSONで返してください。
 ${furiganaRule}`;
-
 
         case "jitsugaku":
             return `あなたは「AIせんせい・実学の先生」です。対象学年: ${grade}
@@ -523,12 +466,10 @@ ${furiganaRule}`;
 保護者と一緒に話せるコメントも含めてJSONで返してください。
 ${furiganaRule}`;
 
-
         default:
             return getDefaultSystemPrompt(grade);
     }
 }
-
 
 // =========================================================
 // 現在の日本時間を取得するヘルパー
@@ -546,14 +487,11 @@ function getCurrentJSTDateString(): string {
     return `${year}年${month}月${day}日（${week}曜日）${hour}:${min}`;
 }
 
-
 function getDefaultSystemPrompt(grade: string): string {
     const furiganaRule = getFuriganaRule(grade);
 
-
     if (grade.includes("年少") || grade.includes("年中") || grade.includes("年長")) {
         return `あなたは未就学児のための「AIせんせい」です。
-
 
 【会話ルール】
 1. とにかくやさしく、ひらがなをメインに話す
@@ -562,18 +500,14 @@ function getDefaultSystemPrompt(grade: string): string {
 4. 絵文字を1〜2個使う
 5. 最後に必ず「〇〇はすき？」「〇〇ってしってる？」など簡単な質問をする
 
-
 【リアルタイム情報】
 天気・最新ニュースなど最新情報が必要なときは、必ず search_web ツールを使うこと。
-
 
 ${furiganaRule}`;
     }
 
-
     if (grade.includes("小学1年生")) {
         return `あなたは小学1年生のための「AIせんせい」です。
-
 
 【会話ルール】
 1. 質問には必ずやさしく答え、最後に派生した具体的な質問をする
@@ -581,23 +515,18 @@ ${furiganaRule}`;
 3. 語尾は「〜だよ」「〜だね」などやさしい口調
 4. 絵文字を1〜2個使う
 
-
 【リアルタイム情報】
 天気・ゲーム発売日・最新ニュースなど最新情報が必要なときは、必ず search_web ツールを使うこと。
-
 
 【出力例】
 <ruby>海<rt>うみ</rt></ruby>の<ruby>水<rt>みず</rt></ruby>はしょっぱいよ！🌊
 それは<ruby>塩<rt>しお</rt></ruby>が<ruby>入<rt>はい</rt></ruby>っているからなんだ。
 
-
 ${furiganaRule}`;
     }
 
-
     if (grade.includes("小学2年生")) {
         return `あなたは小学2年生のための「AIせんせい」です。
-
 
 【会話ルール】
 1. 質問には丁寧に答え、最後に考えを深める質問をする
@@ -605,18 +534,14 @@ ${furiganaRule}`;
 3. 語尾は「〜だよ」「〜だね」など親しみやすい口調
 4. 絵文字を1〜2個使う
 
-
 【リアルタイム情報】
 天気・ゲーム発売日・最新ニュースなど最新情報が必要なときは、必ず search_web ツールを使うこと。
-
 
 ${furiganaRule}`;
     }
 
-
     if (grade.includes("小学3年生")) {
         return `あなたは小学3年生のための「AIせんせい」です。
-
 
 【会話ルール】
 1. 質問には正確にわかりやすく答える
@@ -625,15 +550,12 @@ ${furiganaRule}`;
 4. 最後に関連する質問を1つする
 5. 絵文字を1個使う
 
-
 天気・ゲーム発売日・最新ニュースなどは search_web を使うこと。
 ${furiganaRule}`;
     }
 
-
     if (grade.includes("小学4年生")) {
         return `あなたは小学4年生のための「AIせんせい」です。
-
 
 【会話ルール】
 1. 質問には正確かつ論理的に答える
@@ -641,15 +563,12 @@ ${furiganaRule}`;
 3. 「なぜそうなるのか」の理由まで説明する
 4. 最後に発展的な問いかけをする
 
-
 天気・ゲーム発売日・最新ニュースなどは search_web を使うこと。
 ${furiganaRule}`;
     }
 
-
     if (grade.includes("小学5年生")) {
         return `あなたは小学5年生のための「AIせんせい」です。
-
 
 【会話ルール】
 1. 質問には多角的な視点で答える
@@ -657,14 +576,11 @@ ${furiganaRule}`;
 3. 社会や科学との関連も含めて説明する
 4. 最後に「あなたはどう思う？」と問いかける
 
-
 天気・ゲーム発売日・最新ニュースなどは search_web を使うこと。
 ${furiganaRule}`;
     }
 
-
     return `あなたは小学6年生のための「AIせんせい」です。
-
 
 【会話ルール】
 1. 質問には深く、体系的に答える
@@ -672,11 +588,9 @@ ${furiganaRule}`;
 3. 将来のキャリアや社会課題とも結びつけて説明する
 4. 批判的思考を促す問いかけを最後にする
 
-
 天気・ゲーム発売日・最新ニュースなどは search_web を使うこと。
 ${furiganaRule}`;
 }
-
 
 // =========================================================
 // メインのAPIハンドラー
@@ -695,11 +609,9 @@ export async function POST(req: NextRequest) {
             mode: LearningMode;
         };
 
-
         if (!message?.trim()) {
             return NextResponse.json({ error: "メッセージが空です" }, { status: 400 });
         }
-
 
         // ✅ Fix3: contents の型を拡張（functionCall / functionResponse を含められるように）
         const contents: Array<{
@@ -711,7 +623,6 @@ export async function POST(req: NextRequest) {
             }>;
         }> = [];
 
-
         // 会話履歴の構築（rubyタグを除去してトークン節約）
         for (const msg of (history ?? []).slice(-10)) {
             const role = msg.sender === "user" ? "user" : "model";
@@ -720,23 +631,20 @@ export async function POST(req: NextRequest) {
         }
         contents.push({ role: "user", parts: [{ text: message }] });
 
-
         const currentDateTime = getCurrentJSTDateString();
         const systemPrompt =
             `【現在の日時】${currentDateTime}（日本時間）\n` +
             `この日時情報を正確に使い、「今日」「明日」「昨日」などの質問に答えること。\n\n` +
             getModeSystemPrompt(mode as LearningMode, grade ?? "");
+
         const schema = RESPONSE_SCHEMAS[mode as LearningMode];
         const isChatMode = mode === "chat";
-
 
         const generationConfig = schema
             ? { responseMimeType: "application/json", responseSchema: schema }
             : undefined;
 
-
         // 第1回APIコール
-        const ai = getGenerativeAI();
         let response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
             contents,
@@ -747,21 +655,17 @@ export async function POST(req: NextRequest) {
             },
         });
 
-
         // Function Callingループ（chatモードのみ・最大3回）
         let loopCount = 0;
         const MAX_LOOPS = 3;
-
 
         while (isChatMode && loopCount < MAX_LOOPS) {
             const functionCalls = response.functionCalls;
             if (!functionCalls || functionCalls.length === 0) break;
 
-
             loopCount++;
             const fc = functionCalls[0];
             console.log(`[chat/route] Function Call #${loopCount}: ${fc.name}`);
-
 
             let searchResult = "";
             if (fc.name === "search_web") {
@@ -771,20 +675,17 @@ export async function POST(req: NextRequest) {
                 searchResult = `未知の関数: ${fc.name}`;
             }
 
-
             // モデルの function call を履歴に追加
             contents.push({
                 role: "model",
                 parts: [{ functionCall: { name: fc.name!, args: (fc.args ?? {}) as Record<string, unknown> } }],
             });
 
-
             // 検索結果を function response として追加
             contents.push({
                 role: "user",
                 parts: [{ functionResponse: { name: fc.name!, response: { result: searchResult } } }],
             });
-
 
             // 検索結果を受けて再度生成
             response = await ai.models.generateContent({
@@ -797,16 +698,13 @@ export async function POST(req: NextRequest) {
             });
         }
 
-
         // レスポンス処理
         const rawText = response.text ?? "";
-
 
         if (mode === "chat") {
             const processedText = processTextResponse(rawText, grade ?? "");
             return NextResponse.json({ mode: "chat", reply: processedText });
         }
-
 
         try {
             const parsed = JSON.parse(rawText);
@@ -817,7 +715,6 @@ export async function POST(req: NextRequest) {
             const processedText = processTextResponse(rawText, grade ?? "");
             return NextResponse.json({ mode: "chat", reply: processedText });
         }
-
 
     } catch (error: unknown) {
         console.error("[API/chat] エラー:", error);
