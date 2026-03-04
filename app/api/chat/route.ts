@@ -1,9 +1,10 @@
 // app/api/chat/route.ts
 
-
 import { GoogleGenAI, Type } from "@google/genai"; // ✅ Fix1: Type を追加
 import { NextRequest, NextResponse } from "next/server";
 
+// ✅ 【重要な修正】この1行を追加：ビルド時の静的生成を防ぐ設定
+export const dynamic = 'force-dynamic';
 
 // グローバルでの初期化を削除（Vercelビルド時のエラーを防ぐため）
 // const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
