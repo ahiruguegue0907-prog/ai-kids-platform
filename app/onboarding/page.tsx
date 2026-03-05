@@ -94,7 +94,6 @@ export default function ParentOnboardingPage() {
 
     const handleLineLogin = () => {
         if (!signInLoaded || !signIn) return;
-        // LINE は Clerk の Social Connection で "line" を追加している場合
         signIn.authenticateWithRedirect({
             strategy: 'oauth_line',
             redirectUrl: '/onboarding',
@@ -305,8 +304,34 @@ export default function ParentOnboardingPage() {
     );
 
     // ─────────────────────────────────────────────────────────
-    // STEP 2 ： 完了
+    // STEP 2 ： 完了（★ sessionStorage 書き込みを追加）
     // ─────────────────────────────────────────────────────────
+    const handleGoToChat = () => {
+        // sessionStorage にプロフィールを書き込み
+        sessionStorage.setItem('currentChildName', childName.trim());
+        sessionStorage.setItem('currentChildTitle', 'くん');
+        sessionStorage.setItem('currentChildGrade', selectedGrade);
+        sessionStorage.setItem('currentChildIcon', selectedGradeOption?.emoji || '🐶');
+
+        // localStorage にも兄弟リストとして保存（アカウント切替用）
+        const childData = {
+            id: Date.now().toString(),
+            name: childName.trim(),
+            title: 'くん',
+            icon: selectedGradeOption?.emoji || '🐶',
+            grade: selectedGrade,
+        };
+        const existing = localStorage.getItem('allChildren');
+        let children: { name: string }[] = [];
+        try { children = existing ? JSON.parse(existing) : []; } catch (_) { /* ignore */ }
+        if (!children.find((c) => c.name === childData.name)) {
+            children.push(childData);
+        }
+        localStorage.setItem('allChildren', JSON.stringify(children));
+
+        router.push('/chat');
+    };
+
     const renderStep2 = () => (
         <div className="text-center space-y-6">
             <div className="animate-bounce"><div className="text-7xl mb-4">🎊</div></div>
@@ -324,7 +349,7 @@ export default function ParentOnboardingPage() {
                 <p>📖 勉強のお手伝いをするよ</p>
                 <p>🎨 いっしょに絵や音楽も作れるよ</p>
             </div>
-            <button onClick={() => router.push('/chat')}
+            <button onClick={handleGoToChat}
                 className="w-full py-5 rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold text-lg shadow-lg hover:shadow-xl active:scale-95 transition-all">
                 AIせんせいとはなす！ 🚀
             </button>
