@@ -92,7 +92,7 @@ export default function HomePage() {
         setIsDropdownOpen(false);
         sessionStorage.clear();
         await signOut();
-        router.push('/onboarding?mode=settings');
+        router.push('/onboarding');
     };
 
     const handleSwitchChild = (child: ChildData) => {
@@ -198,7 +198,7 @@ export default function HomePage() {
                                 {/* 保護者メニュー */}
                                 <div className="p-2 border-t border-gray-100 bg-gray-50 hover:bg-gray-100 transition-colors">
                                     <button
-                                        onClick={() => router.push('/onboarding')}
+                                        onClick={() => router.push('/onboarding?mode=settings')}
                                         className="w-full text-center text-sm font-medium text-gray-600 py-2"
                                     >
                                         保護者メニュー（設定）
