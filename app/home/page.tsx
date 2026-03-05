@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useClerk } from '@clerk/nextjs';
+import { useClerk, useUser } from '@clerk/nextjs';
 import { MessageCircle, Search, Gamepad2, LogOut } from 'lucide-react';
 
 interface ChildData {
@@ -16,6 +16,7 @@ interface ChildData {
 export default function HomePage() {
     const router = useRouter();
     const { signOut } = useClerk();
+    const { user, isLoaded: isUserLoaded } = useUser();
 
     const [childName, setChildName] = useState<string>('');
     const [childTitle, setChildTitle] = useState<string>('');
@@ -24,26 +25,67 @@ export default function HomePage() {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [siblingsList, setSiblingsList] = useState<ChildData[]>([]);
 
+    // ── セッションストレージから子ども情報を復元（★ Clerkフォールバック付き）──
     useEffect(() => {
         const storedName = sessionStorage.getItem('currentChildName');
         const storedTitle = sessionStorage.getItem('currentChildTitle');
         const storedIcon = sessionStorage.getItem('currentChildIcon');
         const storedGrade = sessionStorage.getItem('currentChildGrade');
 
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        if (storedName) setChildName(storedName);
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        if (storedTitle !== null) setChildTitle(storedTitle);
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        if (storedIcon) setChildIcon(storedIcon);
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        if (storedGrade) setChildGrade(storedGrade);
+        if (storedName) {
+            // sessionStorage にデータがある場合はそのまま使う
+            setChildName(storedName);
+            if (storedTitle !== null) setChildTitle(storedTitle);
+            if (storedIcon) setChildIcon(storedIcon);
+            if (storedGrade) setChildGrade(storedGrade);
+        } else if (isUserLoaded && user) {
+            // sessionStorage が空 → Clerk のメタデータから復元
+            const profile = user.unsafeMetadata?.childProfile as {
+                name?: string;
+                grade?: string;
+                emoji?: string;
+            } | undefined;
+
+            if (profile) {
+                const name = profile.name || '';
+                const grade = profile.grade || '';
+                const icon = profile.emoji || '🐶';
+                const title = 'くん';
+
+                setChildName(name);
+                setChildTitle(title);
+                setChildIcon(icon);
+                setChildGrade(grade);
+
+                // 次回のために sessionStorage にも保存
+                sessionStorage.setItem('currentChildName', name);
+                sessionStorage.setItem('currentChildTitle', title);
+                sessionStorage.setItem('currentChildGrade', grade);
+                sessionStorage.setItem('currentChildIcon', icon);
+
+                // localStorage の兄弟リストにも追加
+                const childData = {
+                    id: Date.now().toString(),
+                    name,
+                    title,
+                    icon,
+                    grade,
+                };
+                const existing = localStorage.getItem('allChildren');
+                let children: { name: string }[] = [];
+                try { children = existing ? JSON.parse(existing) : []; } catch (_) { /* ignore */ }
+                if (!children.find((c) => c.name === childData.name)) {
+                    children.push(childData);
+                }
+                localStorage.setItem('allChildren', JSON.stringify(children));
+            }
+        }
 
         const storedAll = localStorage.getItem('allChildren');
         if (storedAll) {
-            try { setSiblingsList(JSON.parse(storedAll)); } catch (e) { }
+            try { setSiblingsList(JSON.parse(storedAll)); } catch (_) { /* ignore */ }
         }
-    }, []);
+    }, [isUserLoaded, user]);
 
     // ログアウト処理
     const handleLogout = async () => {
@@ -163,7 +205,7 @@ export default function HomePage() {
                                     </button>
                                 </div>
 
-                                {/* ログアウトボタン ← 追加 */}
+                                {/* ログアウトボタン */}
                                 <div className="p-2 border-t border-red-100 bg-red-50 hover:bg-red-100 transition-colors">
                                     <button
                                         onClick={handleLogout}
