@@ -25,28 +25,18 @@ export default function HomePage() {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [siblingsList, setSiblingsList] = useState<ChildData[]>([]);
 
-    // ── セッションストレージから子ども情報を復元（★ Clerkフォールバック付き）──
+    // ── 子ども情報を復元（★ Clerk優先：常にClerkのデータで上書き）──
     useEffect(() => {
-        const storedName = sessionStorage.getItem('currentChildName');
-        const storedTitle = sessionStorage.getItem('currentChildTitle');
-        const storedIcon = sessionStorage.getItem('currentChildIcon');
-        const storedGrade = sessionStorage.getItem('currentChildGrade');
-
-        if (storedName) {
-            // sessionStorage にデータがある場合はそのまま使う
-            setChildName(storedName);
-            if (storedTitle !== null) setChildTitle(storedTitle);
-            if (storedIcon) setChildIcon(storedIcon);
-            if (storedGrade) setChildGrade(storedGrade);
-        } else if (isUserLoaded && user) {
-            // sessionStorage が空 → Clerk のメタデータから復元
+        if (isUserLoaded && user) {
+            // Clerk のメタデータを確認
             const profile = user.unsafeMetadata?.childProfile as {
                 name?: string;
                 grade?: string;
                 emoji?: string;
             } | undefined;
 
-            if (profile) {
+            if (profile && profile.name) {
+                // ★ Clerkにデータがある → これを正として使う
                 const name = profile.name || '';
                 const grade = profile.grade || '';
                 const icon = profile.emoji || '🐶';
@@ -57,13 +47,13 @@ export default function HomePage() {
                 setChildIcon(icon);
                 setChildGrade(grade);
 
-                // 次回のために sessionStorage にも保存
+                // sessionStorage も最新に更新
                 sessionStorage.setItem('currentChildName', name);
                 sessionStorage.setItem('currentChildTitle', title);
                 sessionStorage.setItem('currentChildGrade', grade);
                 sessionStorage.setItem('currentChildIcon', icon);
 
-                // localStorage の兄弟リストにも追加
+                // localStorage の兄弟リストも更新
                 const childData = {
                     id: Date.now().toString(),
                     name,
@@ -72,12 +62,38 @@ export default function HomePage() {
                     grade,
                 };
                 const existing = localStorage.getItem('allChildren');
-                let children: { name: string }[] = [];
+                let children: { name: string; grade?: string }[] = [];
                 try { children = existing ? JSON.parse(existing) : []; } catch (_) { /* ignore */ }
-                if (!children.find((c) => c.name === childData.name)) {
-                    children.push(childData);
-                }
+                // 同名のエントリを削除してから追加（常に最新に更新）
+                children = children.filter((c) => c.name !== childData.name);
+                children.push(childData);
                 localStorage.setItem('allChildren', JSON.stringify(children));
+            } else {
+                // Clerkにデータなし → sessionStorage があればそれを使う
+                const storedName = sessionStorage.getItem('currentChildName');
+                const storedTitle = sessionStorage.getItem('currentChildTitle');
+                const storedIcon = sessionStorage.getItem('currentChildIcon');
+                const storedGrade = sessionStorage.getItem('currentChildGrade');
+
+                if (storedName) {
+                    setChildName(storedName);
+                    if (storedTitle !== null) setChildTitle(storedTitle);
+                    if (storedIcon) setChildIcon(storedIcon);
+                    if (storedGrade) setChildGrade(storedGrade);
+                }
+            }
+        } else if (!isUserLoaded) {
+            // Clerkがまだ読み込み中 → とりあえず sessionStorage から表示
+            const storedName = sessionStorage.getItem('currentChildName');
+            const storedTitle = sessionStorage.getItem('currentChildTitle');
+            const storedIcon = sessionStorage.getItem('currentChildIcon');
+            const storedGrade = sessionStorage.getItem('currentChildGrade');
+
+            if (storedName) {
+                setChildName(storedName);
+                if (storedTitle !== null) setChildTitle(storedTitle);
+                if (storedIcon) setChildIcon(storedIcon);
+                if (storedGrade) setChildGrade(storedGrade);
             }
         }
 
