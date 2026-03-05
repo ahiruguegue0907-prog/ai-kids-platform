@@ -340,7 +340,7 @@ export default function ChatPage() {
                                     </div>
                                     <div className="p-2 border-t border-gray-100 bg-gray-50 hover:bg-gray-100 transition-colors">
                                         <button
-                                            onClick={() => router.push('/onboarding')}
+                                            onClick={() => router.push('/onboarding?mode=settings')}
                                             className="w-full text-center text-sm font-medium text-gray-600 py-2"
                                         >
                                             保護者メニュー（設定）
