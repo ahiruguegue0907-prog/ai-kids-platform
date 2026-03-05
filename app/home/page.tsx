@@ -92,7 +92,7 @@ export default function HomePage() {
         setIsDropdownOpen(false);
         sessionStorage.clear();
         await signOut();
-        router.push('/onboarding');
+        router.push('/onboarding?mode=settings');
     };
 
     const handleSwitchChild = (child: ChildData) => {
