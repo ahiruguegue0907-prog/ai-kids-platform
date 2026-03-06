@@ -224,32 +224,59 @@ useEffect(() => {
         setError(''); return true;
     };
 
-    const handleSubmit = async () => {
-        if (!validateStep1() || !selectedGradeOption || !user) return;
-        setIsSubmitting(true);
-        setError('');
-        const childProfile: ChildProfile = {
-            name: childName.trim(),
-            grade: selectedGrade,
-            emoji: selectedGradeOption.emoji,
-            color: selectedGradeOption.color,
-        };
-        try {
-            await user.update({
-                unsafeMetadata: {
-                    ...user.unsafeMetadata,
-                    childProfile,
-                    onboardingCompleted: true,
-                    onboardingCompletedAt: new Date().toISOString(),
-                },
-            });
-            setCurrentStep(2);
-        } catch {
-            setError('保存中にエラーが起きました。もう一度お試しください。');
-        } finally {
-            setIsSubmitting(false);
-        }
+const handleSubmit = async () => {
+    if (!validateStep1() || !selectedGradeOption || !user) return;
+    setIsSubmitting(true);
+    setError('');
+    const childProfile: ChildProfile = {
+        name: childName.trim(),
+        grade: selectedGrade,
+        emoji: selectedGradeOption.emoji,
+        color: selectedGradeOption.color,
     };
+    try {
+        await user.update({
+            unsafeMetadata: {
+                ...user.unsafeMetadata,
+                childProfile,
+                onboardingCompleted: true,
+                onboardingCompletedAt: new Date().toISOString(),
+            },
+        });
+
+        // sessionStorage・localStorage を更新
+        sessionStorage.setItem('currentChildName', childName.trim());
+        sessionStorage.setItem('currentChildTitle', 'くん');
+        sessionStorage.setItem('currentChildGrade', selectedGrade);
+        sessionStorage.setItem('currentChildIcon', selectedGradeOption.emoji);
+
+        const childData = {
+            id: Date.now().toString(),
+            name: childName.trim(),
+            title: 'くん',
+            icon: selectedGradeOption.emoji,
+            grade: selectedGrade,
+        };
+        const existing = localStorage.getItem('allChildren');
+        let children: { name: string }[] = [];
+        try { children = existing ? JSON.parse(existing) : []; } catch (_) { /* ignore */ }
+        const filtered = children.filter((c) => c.name !== childData.name);
+        filtered.push(childData);
+        localStorage.setItem('allChildren', JSON.stringify(filtered));
+
+        // 設定モードなら完了画面をスキップしてチャットへ直接戻る
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('mode') === 'settings') {
+            router.push('/chat');
+        } else {
+            setCurrentStep(2);
+        }
+    } catch {
+        setError('保存中にエラーが起きました。もう一度お試しください。');
+    } finally {
+        setIsSubmitting(false);
+    }
+};
 
     const renderStep1 = () => (
         <div className="space-y-6">
