@@ -3,6 +3,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { NextRequest, NextResponse } from "next/server";
 import path from "path";
+import { createChatSession, addMessageToSession } from "@/lib/firestore";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 
@@ -1816,11 +1817,21 @@ export async function POST(req: NextRequest) {
             grade,
             history,
             mode = "chat",
+            clerkUserId,
+            sessionId: existingSessionId,
+            profileId,
+            profileName,
+            profileTitle,
         } = (await req.json()) as {
             message: string;
             grade: string;
             history: { sender: string; text: string }[];
             mode: LearningMode;
+            clerkUserId?: string;
+            sessionId?: string;
+            profileId?: string;
+            profileName?: string;
+            profileTitle?: string;
         };
 
         if (!message?.trim()) {
@@ -1943,23 +1954,56 @@ export async function POST(req: NextRequest) {
             });
         }
 
+        // ===== Firestore: セッション作成 & ユーザーメッセージ保存 =====
+        let sessionId = existingSessionId || null;
+        if (clerkUserId && profileId) {
+            try {
+                if (!sessionId) {
+                    sessionId = await createChatSession(
+                        clerkUserId,
+                        profileId,
+                        profileName || "",
+                        profileTitle || "",
+                        grade || ""
+                    );
+                }
+                await addMessageToSession(clerkUserId, sessionId, "user", message);
+            } catch (firestoreError) {
+                console.error("[Firestore] 保存エラー（続行）:", firestoreError);
+            }
+        }
+
         const rawText = response.text ?? "";
 
         if (mode === "chat") {
             const withRuby = await addRubyToText(rawText, grade ?? "");
-            return NextResponse.json({ mode: "chat", reply: withRuby });
+            if (clerkUserId && sessionId) {
+                try { await addMessageToSession(clerkUserId, sessionId, "assistant", rawText); }
+                catch (e) { console.error("[Firestore] AI応答保存エラー:", e); }
+            }
+            return NextResponse.json({ mode: "chat", reply: withRuby, sessionId });
         }
 
         try {
             const parsed = JSON.parse(rawText);
             const corrected = await applyRubyToJSON(parsed, grade ?? "");
-            return NextResponse.json({ mode, data: corrected });
+            if (clerkUserId && sessionId) {
+                try { await addMessageToSession(clerkUserId, sessionId, "assistant", rawText); }
+                catch (e) { console.error("[Firestore] AI応答保存エラー:", e); }
+            }
+            return NextResponse.json({ mode, data: corrected, sessionId });
+
         } catch {
             console.warn(
                 "[chat/route] JSONパース失敗、テキストにフォールバック"
             );
             const withRuby = await addRubyToText(rawText, grade ?? "");
-            return NextResponse.json({ mode: "chat", reply: withRuby });
+            if (clerkUserId && sessionId) {
+                try { await addMessageToSession(clerkUserId, sessionId, "assistant", rawText); }
+                catch (e) { console.error("[Firestore] AI応答保存エラー:", e); }
+            }
+            return NextResponse.json({ mode: "chat", reply: withRuby, sessionId });
+
         }
     } catch (error: unknown) {
         console.error("[API/chat] エラー:", error);

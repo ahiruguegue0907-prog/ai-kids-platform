@@ -78,6 +78,7 @@ export default function ChatPage() {
     const [childTitle, setChildTitle] = useState<string>('');
     const [childIcon, setChildIcon] = useState<string>('🐶');
     const [childGrade, setChildGrade] = useState<string>('');
+    const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
 
     const [messages, setMessages] = useState<{ id: string; text: string; sender: 'user' | 'ai' }[]>([]);
     const [inputValue, setInputValue] = useState('');
@@ -266,6 +267,11 @@ export default function ChatPage() {
                     message: userMessage,
                     grade: childGrade,
                     history: currentHistory,
+                    clerkUserId: user?.id,
+                    sessionId: currentSessionId,
+                    profileId: user?.id ? `${user.id}_${childName}` : undefined,
+                    profileName: childName,
+                    profileTitle: childTitle,
                 }),
             });
 
@@ -273,6 +279,9 @@ export default function ChatPage() {
 
             const data = await response.json();
             const aiReply = data.reply || getErrorMessage(gradeGroup);
+            if (data.sessionId) {
+                setCurrentSessionId(data.sessionId);
+            }
 
             setMessages(prev => [...prev, {
                 id: Date.now().toString(),
@@ -389,6 +398,13 @@ export default function ChatPage() {
                                         >
                                             保護者メニュー（設定）
                                         </button>
+                                        <button
+                                            onClick={() => router.push('/dashboard')}
+                                            className="w-full text-center text-sm font-medium text-white bg-indigo-500 hover:bg-indigo-600 rounded-md py-2 mt-1 transition-colors"
+                                        >
+                                            📊 保護者ダッシュボード
+                                        </button>
+
                                     </div>
                                 </div>
                             )}
