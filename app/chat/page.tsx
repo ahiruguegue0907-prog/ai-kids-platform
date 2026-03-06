@@ -28,28 +28,29 @@ function getGradeBadgeStyle(grade: string): string {
     return 'text-purple-600 bg-purple-50 border border-purple-100';
 }
 
-function getInitialMessage(grade: string): string {
+function getInitialMessage(grade: string, name?: string, title?: string): string {
+    const greeting = name && title ? `${name}${title}、` : '';
     switch (grade) {
         case '年少（3歳）':
-            return 'こんにちは！🌸\nなにをおはなしする？';
+            return `${greeting}こんにちは！🌸\nなにをおはなしする？`;
         case '年中（4歳）':
-            return 'こんにちは！✨\nきょう、なにがきになる？';
+            return `${greeting}こんにちは！✨\nきょう、なにがきになる？`;
         case '年長（5歳）':
-            return 'こんにちは！⭐\nきょうはどんなことをおはなしする？';
+            return `${greeting}こんにちは！⭐\nきょうはどんなことをおはなしする？`;
         case '小学1年生':
-            return 'こんにちは！AI(あい)せんせいだよ。\nきょうはどんなことをおはなしする？';
+            return `${greeting}こんにちは！AI(あい)せんせいだよ。\nきょうはどんなことをおはなしする？`;
         case '小学2年生':
-            return 'こんにちは！AI(あい)先生だよ。\nきょうはどんなことを話したい？';
+            return `${greeting}こんにちは！AI(あい)先生だよ。\nきょうはどんなことを話したい？`;
         case '小学3年生':
-            return 'こんにちは！AI(あい)先生だよ。\n今日はどんなことを話したい？';
+            return `${greeting}こんにちは！AI(あい)先生だよ。\n今日はどんなことを話したい？`;
         case '小学4年生':
-            return 'こんにちは！AI(あい)先生だよ。\n今日はどんなことについて考えてみる？';
+            return `${greeting}こんにちは！AI(あい)先生だよ。\n今日はどんなことについて考えてみる？`;
         case '小学5年生':
-            return 'こんにちは！AI(あい)先生だよ。\n今日はどんなテーマで話してみる？';
+            return `${greeting}こんにちは！AI(あい)先生だよ。\n今日はどんなテーマで話してみる？`;
         case '小学6年生':
-            return 'こんにちは！AI(あい)先生だよ。\n今日はどんな話題に挑戦してみようか？';
+            return `${greeting}こんにちは！AI(あい)先生だよ。\n今日はどんな話題に挑戦してみようか？`;
         default:
-            return 'こんにちは！AI(あい)先生だよ。\n今日はどんなことをお話しする？';
+            return `${greeting}こんにちは！AI(あい)先生だよ。\n今日はどんなことをお話しする？`;
     }
 }
 
@@ -88,49 +89,73 @@ export default function ChatPage() {
     const [aiEmotion, setAiEmotion] = useState<'idle' | 'thinking' | 'happy'>('idle');
     const emotionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-    // ── 子ども情報を復元（★ Clerk優先：常にClerkのデータで上書き）──
+    // ── 子ども情報を復元（Clerk優先 → sessionStorage フォールバック）──
     useEffect(() => {
         if (isUserLoaded && user) {
-            // Clerk のメタデータを確認
-            const profile = user.unsafeMetadata?.childProfile as {
+            const meta = user.unsafeMetadata;
+
+            // まず sessionStorage からアクティブな子の名前を取得
+            const activeChildName = sessionStorage.getItem('currentChildName');
+
+            // Clerk の複数プロフィール形式を確認
+            const profiles = meta?.childProfiles as Array<{
                 name?: string;
                 grade?: string;
                 emoji?: string;
+                title?: string;
+            }> | undefined;
+
+            // 旧形式の単一プロフィール
+            const singleProfile = meta?.childProfile as {
+                name?: string;
+                grade?: string;
+                emoji?: string;
+                title?: string;
             } | undefined;
 
-            if (profile && profile.name) {
-                // ★ Clerkにデータがある → これを正として使う
-                const name = profile.name || '';
-                const grade = profile.grade || '';
-                const icon = profile.emoji || '🐶';
-                const title = 'くん';
+            // アクティブな子のプロフィールを特定
+            let activeProfile: { name?: string; grade?: string; emoji?: string; title?: string } | undefined;
+
+            if (profiles && Array.isArray(profiles) && profiles.length > 0) {
+                // 複数プロフィールからアクティブな子を探す
+                if (activeChildName) {
+                    activeProfile = profiles.find(p => p.name === activeChildName);
+                }
+                // 見つからなければ最初のプロフィールを使用
+                if (!activeProfile) {
+                    activeProfile = profiles[0];
+                }
+
+                // localStorage の兄弟リストを Clerk から復元
+                const childrenFromClerk: ChildData[] = profiles.map((p, i) => ({
+                    id: `clerk-${i}`,
+                    name: p.name || '',
+                    title: p.title || 'くん',
+                    icon: p.emoji || '🐶',
+                    grade: p.grade || '',
+                }));
+                localStorage.setItem('allChildren', JSON.stringify(childrenFromClerk));
+                setSiblingsList(childrenFromClerk);
+            } else if (singleProfile && singleProfile.name) {
+                // 旧形式から読み込み
+                activeProfile = singleProfile;
+            }
+
+            if (activeProfile && activeProfile.name) {
+                const name = activeProfile.name || '';
+                const grade = activeProfile.grade || '';
+                const icon = activeProfile.emoji || '🐶';
+                const title = activeProfile.title || sessionStorage.getItem('currentChildTitle') || 'くん';
 
                 setChildName(name);
                 setChildTitle(title);
                 setChildIcon(icon);
                 setChildGrade(grade);
 
-                // sessionStorage も最新に更新
                 sessionStorage.setItem('currentChildName', name);
                 sessionStorage.setItem('currentChildTitle', title);
                 sessionStorage.setItem('currentChildGrade', grade);
                 sessionStorage.setItem('currentChildIcon', icon);
-
-                // localStorage の兄弟リストも更新
-                const childData = {
-                    id: Date.now().toString(),
-                    name,
-                    title,
-                    icon,
-                    grade,
-                };
-                const existing = localStorage.getItem('allChildren');
-                let children: { name: string; grade?: string }[] = [];
-                try { children = existing ? JSON.parse(existing) : []; } catch (_) { /* ignore */ }
-                // 同名のエントリを削除してから追加（常に最新に更新）
-                children = children.filter((c) => c.name !== childData.name);
-                children.push(childData);
-                localStorage.setItem('allChildren', JSON.stringify(children));
             } else {
                 // Clerkにデータなし → sessionStorage があればそれを使う
                 const storedName = sessionStorage.getItem('currentChildName');
@@ -160,9 +185,12 @@ export default function ChatPage() {
             }
         }
 
-        const storedAll = localStorage.getItem('allChildren');
-        if (storedAll) {
-            try { setSiblingsList(JSON.parse(storedAll)); } catch (_) { /* ignore */ }
+        // 兄弟リストが未設定の場合、localStorage から読み込み
+        if (siblingsList.length === 0) {
+            const storedAll = localStorage.getItem('allChildren');
+            if (storedAll) {
+                try { setSiblingsList(JSON.parse(storedAll)); } catch (_) { /* ignore */ }
+            }
         }
     }, [isUserLoaded, user]);
 
@@ -193,7 +221,7 @@ export default function ChatPage() {
 
     const headerTitle = `${childName}${childTitle}、こんにちは！`;
 
-    const initialAiMessage = getInitialMessage(childGrade);
+    const initialAiMessage = getInitialMessage(childGrade, childName, childTitle);
 
     useEffect(() => {
         setMessages(prev => {
