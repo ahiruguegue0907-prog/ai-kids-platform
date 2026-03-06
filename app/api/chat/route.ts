@@ -1955,8 +1955,9 @@ export async function POST(req: NextRequest) {
         }
 
         // ===== Firestore: セッション作成 & ユーザーメッセージ保存 =====
+        const isVercel = process.env.VERCEL === "1";
         let sessionId = existingSessionId || null;
-        if (clerkUserId && profileId) {
+        if (clerkUserId && profileId && !isVercel) {
             try {
                 if (!sessionId) {
                     sessionId = await createChatSession(
@@ -1977,7 +1978,7 @@ export async function POST(req: NextRequest) {
 
         if (mode === "chat") {
             const withRuby = await addRubyToText(rawText, grade ?? "");
-            if (clerkUserId && sessionId) {
+            if (clerkUserId && sessionId && !isVercel) {
                 try { await addMessageToSession(clerkUserId, sessionId, "assistant", rawText); }
                 catch (e) { console.error("[Firestore] AI応答保存エラー:", e); }
             }
