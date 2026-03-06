@@ -10,6 +10,7 @@ interface ChildProfile {
   grade: string;
   emoji: string;
   color: string;
+  title?: string;
 }
 
 interface ChildData {
@@ -40,7 +41,6 @@ export default function ParentOnboardingPage() {
   const { signIn, isLoaded: signInLoaded } = useSignIn();
   const router = useRouter();
 
-  // モード管理: 'onboarding' | 'settings' | 'edit' | 'add'
   const [mode, setMode] = useState<'onboarding' | 'settings' | 'edit' | 'add'>('onboarding');
   const [currentStep, setCurrentStep] = useState<0 | 1 | 2>(0);
   const [email, setEmail] = useState('');
@@ -48,68 +48,66 @@ export default function ParentOnboardingPage() {
   const [emailSent, setEmailSent] = useState(false);
   const [childName, setChildName] = useState('');
   const [selectedGrade, setSelectedGrade] = useState('');
+  const [selectedTitle, setSelectedTitle] = useState('くん');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [childrenList, setChildrenList] = useState<ChildData[]>([]);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<number | null>(null);
 
-useEffect(() => {
-  if (isLoaded && isSignedIn) {
-    const params = new URLSearchParams(window.location.search);
-    const isSettingsMode = params.get('mode') === 'settings';
+  // 初期化
+  useEffect(() => {
+    if (isLoaded && isSignedIn) {
+      const params = new URLSearchParams(window.location.search);
+      const isSettingsMode = params.get('mode') === 'settings';
 
-    // localStorage から子どもリストを読み込み
-    const stored = localStorage.getItem('allChildren');
-    let children: ChildData[] = [];
-    try { children = stored ? JSON.parse(stored) : []; } catch (_) { /* ignore */ }
+      const stored = localStorage.getItem('allChildren');
+      let children: ChildData[] = [];
+      try { children = stored ? JSON.parse(stored) : []; } catch (_) { /* ignore */ }
 
-    // localStorage が空なら Clerk から復元
-    if (children.length === 0) {
-      const meta = user?.unsafeMetadata;
-      // 新形式（配列）
-      const profiles = meta?.childProfiles as ChildProfile[] | undefined;
-      if (profiles && Array.isArray(profiles) && profiles.length > 0) {
-        children = profiles.map((p, i) => ({
-          id: `clerk-${i}`,
-          name: p.name,
-          title: 'くん',
-          icon: p.emoji,
-          grade: p.grade,
-        }));
-      } else {
-        // 旧形式（単一オブジェクト）からの移行
-        const single = meta?.childProfile as ChildProfile | undefined;
-        if (single && single.name) {
-          children = [{
-            id: 'clerk-0',
-            name: single.name,
-            title: 'くん',
-            icon: single.emoji,
-            grade: single.grade,
-          }];
+      if (children.length === 0) {
+        const meta = user?.unsafeMetadata;
+        const profiles = meta?.childProfiles as ChildProfile[] | undefined;
+        if (profiles && Array.isArray(profiles) && profiles.length > 0) {
+          children = profiles.map((p, i) => ({
+            id: `clerk-${i}`,
+            name: p.name,
+            title: p.title || 'くん',
+            icon: p.emoji,
+            grade: p.grade,
+          }));
+        } else {
+          const single = meta?.childProfile as ChildProfile | undefined;
+          if (single && single.name) {
+            children = [{
+              id: 'clerk-0',
+              name: single.name,
+              title: single.title || 'くん',
+              icon: single.emoji,
+              grade: single.grade,
+            }];
+          }
+        }
+        if (children.length > 0) {
+          localStorage.setItem('allChildren', JSON.stringify(children));
         }
       }
-      if (children.length > 0) {
-        localStorage.setItem('allChildren', JSON.stringify(children));
-      }
-    }
 
-    setChildrenList(children);
+      setChildrenList(children);
 
-    if (isSettingsMode) {
-      setMode('settings');
-    } else {
-      const completed = user?.unsafeMetadata?.onboardingCompleted;
-      if (completed) {
-        router.push('/chat');
+      if (isSettingsMode) {
+        setMode('settings');
       } else {
-        setMode('onboarding');
-        setCurrentStep(1);
+        const completed = user?.unsafeMetadata?.onboardingCompleted;
+        if (completed) {
+          router.push('/chat');
+        } else {
+          setMode('onboarding');
+          setCurrentStep(1);
+        }
       }
     }
-  }
-}, [isLoaded, isSignedIn, user, router]);
+  }, [isLoaded, isSignedIn, user, router]);
 
   const selectedGradeOption = GRADE_OPTIONS.find(g => g.value === selectedGrade);
 
@@ -120,10 +118,8 @@ useEffect(() => {
     try { children = stored ? JSON.parse(stored) : []; } catch (_) { /* ignore */ }
 
     if (oldName) {
-      // 編集: 古い名前のエントリを置き換え
       children = children.map(c => c.name === oldName ? child : c);
     } else {
-      // 新規追加: 同名がなければ追加
       if (!children.find(c => c.name === child.name)) {
         children.push(child);
       }
@@ -149,27 +145,28 @@ useEffect(() => {
     sessionStorage.setItem('currentChildIcon', child.icon);
   };
 
-// ── Clerk メタデータ更新（複数プロフィール対応）
-const updateClerkProfiles = async (children: ChildData[]) => {
-  if (!user) return;
-  const profiles: ChildProfile[] = children.map(c => {
-    const gradeOpt = GRADE_OPTIONS.find(g => g.value === c.grade);
-    return {
-      name: c.name,
-      grade: c.grade,
-      emoji: gradeOpt?.emoji || c.icon,
-      color: gradeOpt?.color || '#E3F2FD',
-    };
-  });
-  await user.update({
-    unsafeMetadata: {
-      ...user.unsafeMetadata,
-      childProfiles: profiles,
-      onboardingCompleted: true,
-      onboardingCompletedAt: new Date().toISOString(),
-    },
-  });
-};
+  // ── Clerk メタデータ更新（複数プロフィール対応）
+  const updateClerkProfiles = async (children: ChildData[]) => {
+    if (!user) return;
+    const profiles: ChildProfile[] = children.map(c => {
+      const gradeOpt = GRADE_OPTIONS.find(g => g.value === c.grade);
+      return {
+        name: c.name,
+        grade: c.grade,
+        emoji: gradeOpt?.emoji || c.icon,
+        color: gradeOpt?.color || '#E3F2FD',
+        title: c.title,
+      };
+    });
+    await user.update({
+      unsafeMetadata: {
+        ...user.unsafeMetadata,
+        childProfiles: profiles,
+        onboardingCompleted: true,
+        onboardingCompletedAt: new Date().toISOString(),
+      },
+    });
+  };
 
   // ── ステップインジケーター
   const StepIndicator = () => (
@@ -187,6 +184,28 @@ const updateClerkProfiles = async (children: ChildData[]) => {
           )}
         </div>
       ))}
+    </div>
+  );
+
+  // ── 敬称選択UI（共通パーツ）
+  const TitleSelector = () => (
+    <div>
+      <label className="block text-sm font-semibold text-gray-700 mb-2">よびかた</label>
+      <div className="flex gap-3">
+        {['くん', 'ちゃん', 'さん'].map((title) => (
+          <button
+            key={title}
+            onClick={() => setSelectedTitle(title)}
+            className={`flex-1 py-3 rounded-xl border-2 text-center font-bold transition-all duration-200 ${
+              selectedTitle === title
+                ? 'border-purple-500 bg-purple-50 text-purple-700 shadow-md scale-105'
+                : 'border-gray-200 bg-white text-gray-600 hover:border-purple-300'
+            }`}
+          >
+            {childName || '○○'}{title}
+          </button>
+        ))}
+      </div>
     </div>
   );
 
@@ -289,6 +308,7 @@ const updateClerkProfiles = async (children: ChildData[]) => {
     const child = childrenList[index];
     setChildName(child.name);
     setSelectedGrade(child.grade);
+    setSelectedTitle(child.title || 'くん');
     setEditingIndex(index);
     setError('');
     setMode('edit');
@@ -297,30 +317,30 @@ const updateClerkProfiles = async (children: ChildData[]) => {
   const handleAddChild = () => {
     setChildName('');
     setSelectedGrade('');
+    setSelectedTitle('くん');
     setEditingIndex(null);
     setError('');
     setMode('add');
   };
 
-const handleDeleteChild = async (index: number) => {
-  const child = childrenList[index];
-  const currentName = sessionStorage.getItem('currentChildName');
-  if (currentName === child.name) {
-    sessionStorage.removeItem('currentChildName');
-    sessionStorage.removeItem('currentChildTitle');
-    sessionStorage.removeItem('currentChildGrade');
-    sessionStorage.removeItem('currentChildIcon');
-  }
-  deleteChildFromStorage(index);
+  const handleDeleteChild = async (index: number) => {
+    const child = childrenList[index];
+    const currentName = sessionStorage.getItem('currentChildName');
+    if (currentName === child.name) {
+      sessionStorage.removeItem('currentChildName');
+      sessionStorage.removeItem('currentChildTitle');
+      sessionStorage.removeItem('currentChildGrade');
+      sessionStorage.removeItem('currentChildIcon');
+    }
+    deleteChildFromStorage(index);
 
-  // Clerk も更新
-  const remaining = childrenList.filter((_, i) => i !== index);
-  try {
-    await updateClerkProfiles(remaining);
-  } catch { /* ignore */ }
+    const remaining = childrenList.filter((_, i) => i !== index);
+    try {
+      await updateClerkProfiles(remaining);
+    } catch { /* ignore */ }
 
-  setShowDeleteConfirm(null);
-};
+    setShowDeleteConfirm(null);
+  };
 
   const renderSettings = () => (
     <div className="space-y-5">
@@ -357,7 +377,7 @@ const handleDeleteChild = async (index: number) => {
                   </div>
                 ) : (
                   <div className="flex items-center gap-3">
-                   <div style={{ backgroundColor: gradeOption?.color || '#f3f4f6' }} className="text-3xl w-12 h-12 rounded-full flex items-center justify-center">
+                    <div style={{ backgroundColor: gradeOption?.color || '#f3f4f6' }} className="text-3xl w-12 h-12 rounded-full flex items-center justify-center">
                       {child.icon}
                     </div>
                     <div className="flex-1">
@@ -404,56 +424,56 @@ const handleDeleteChild = async (index: number) => {
     setError(''); return true;
   };
 
-const handleSaveProfile = async () => {
-  if (!validateForm() || !selectedGradeOption || !user) return;
-  setIsSubmitting(true);
-  setError('');
+  const handleSaveProfile = async () => {
+    if (!validateForm() || !selectedGradeOption || !user) return;
+    setIsSubmitting(true);
+    setError('');
 
-  const childData: ChildData = {
-    id: editingIndex !== null ? childrenList[editingIndex].id : Date.now().toString(),
-    name: childName.trim(),
-    title: 'くん',
-    icon: selectedGradeOption.emoji,
-    grade: selectedGrade,
+    const childData: ChildData = {
+      id: editingIndex !== null ? childrenList[editingIndex].id : Date.now().toString(),
+      name: childName.trim(),
+      title: selectedTitle,
+      icon: selectedGradeOption.emoji,
+      grade: selectedGrade,
+    };
+
+    try {
+      const oldName = editingIndex !== null ? childrenList[editingIndex].name : undefined;
+      const updatedChildren = saveChildToStorage(childData, oldName);
+      await updateClerkProfiles(updatedChildren);
+      setActiveChild(childData);
+      setMode('settings');
+    } catch {
+      setError('保存中にエラーが起きました。もう一度お試しください。');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  try {
-    const oldName = editingIndex !== null ? childrenList[editingIndex].name : undefined;
-    const updatedChildren = saveChildToStorage(childData, oldName);
-    await updateClerkProfiles(updatedChildren);
-    setActiveChild(childData);
-    setMode('settings');
-  } catch {
-    setError('保存中にエラーが起きました。もう一度お試しください。');
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+  const handleSubmitOnboarding = async () => {
+    if (!validateForm() || !selectedGradeOption || !user) return;
+    setIsSubmitting(true);
+    setError('');
 
-const handleSubmitOnboarding = async () => {
-  if (!validateForm() || !selectedGradeOption || !user) return;
-  setIsSubmitting(true);
-  setError('');
+    const childData: ChildData = {
+      id: Date.now().toString(),
+      name: childName.trim(),
+      title: selectedTitle,
+      icon: selectedGradeOption.emoji,
+      grade: selectedGrade,
+    };
 
-  const childData: ChildData = {
-    id: Date.now().toString(),
-    name: childName.trim(),
-    title: 'くん',
-    icon: selectedGradeOption.emoji,
-    grade: selectedGrade,
+    try {
+      const updatedChildren = saveChildToStorage(childData);
+      await updateClerkProfiles(updatedChildren);
+      setActiveChild(childData);
+      setCurrentStep(2);
+    } catch {
+      setError('保存中にエラーが起きました。もう一度お試しください。');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
-
-  try {
-    const updatedChildren = saveChildToStorage(childData);
-    await updateClerkProfiles(updatedChildren);
-    setActiveChild(childData);
-    setCurrentStep(2);
-  } catch {
-    setError('保存中にエラーが起きました。もう一度お試しください。');
-  } finally {
-    setIsSubmitting(false);
-  }
-};
 
   const renderEditForm = () => (
     <div className="space-y-6">
@@ -469,6 +489,8 @@ const handleSubmitOnboarding = async () => {
         <input type="text" value={childName} onChange={(e) => { setChildName(e.target.value); setError(''); }} placeholder="例：たろう、はなちゃん" maxLength={20} className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-purple-400 focus:outline-none text-gray-800" />
         <p className="text-xs text-gray-400 mt-1 text-right">{childName.length}/20文字</p>
       </div>
+
+      <TitleSelector />
 
       <div>
         <label className="block text-sm font-semibold text-gray-700 mb-3">学年を選んでください</label>
@@ -528,6 +550,8 @@ const handleSubmitOnboarding = async () => {
         <p className="text-xs text-gray-400 mt-1 text-right">{childName.length}/20文字</p>
       </div>
 
+      <TitleSelector />
+
       <div>
         <label className="block text-sm font-semibold text-gray-700 mb-3">学年を選んでください</label>
         <div className="mb-4">
@@ -575,7 +599,7 @@ const handleSubmitOnboarding = async () => {
     <div className="text-center space-y-6">
       <div className="animate-bounce"><div className="text-7xl mb-4">🎊</div></div>
       <h2 className="text-2xl font-bold text-gray-800">準備完了！</h2>
-      <p className="text-gray-600"><strong>{childName}さん</strong>のプロフィールが<br />できあがりました！</p>
+      <p className="text-gray-600"><strong>{childName}{selectedTitle}</strong>のプロフィールが<br />できあがりました！</p>
       {selectedGradeOption && (
         <div className="rounded-2xl p-4 inline-block" style={{ backgroundColor: selectedGradeOption.color }}>
           <span className="text-3xl">{selectedGradeOption.emoji}</span>
@@ -611,7 +635,6 @@ const handleSubmitOnboarding = async () => {
   const renderContent = () => {
     if (mode === 'settings') return renderSettings();
     if (mode === 'edit' || mode === 'add') return renderEditForm();
-    // onboarding モード
     if (currentStep === 0) return renderStep0();
     if (currentStep === 1) return renderStep1();
     return renderStep2();
