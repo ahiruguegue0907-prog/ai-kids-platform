@@ -42,9 +42,20 @@ export default function ParentOnboardingPage() {
     const [error, setError] = useState('');
 
     // ログイン済みならStep1へ自動遷移
-    useEffect(() => {
-        if (isLoaded && isSignedIn) {
-            // オンボーディング完了済みならチャットへ
+useEffect(() => {
+    if (isLoaded && isSignedIn) {
+        const params = new URLSearchParams(window.location.search);
+        const isSettingsMode = params.get('mode') === 'settings';
+
+        if (isSettingsMode) {
+            // 設定モード：リダイレクトせずStep1を表示、既存データをプリフィル
+            setCurrentStep(1);
+            const profile = user?.unsafeMetadata?.childProfile as ChildProfile | undefined;
+            if (profile) {
+                setChildName(profile.name || '');
+                setSelectedGrade(profile.grade || '');
+            }
+        } else {
             const completed = user?.unsafeMetadata?.onboardingCompleted;
             if (completed) {
                 router.push('/chat');
@@ -52,7 +63,8 @@ export default function ParentOnboardingPage() {
                 setCurrentStep(1);
             }
         }
-    }, [isLoaded, isSignedIn, user, router]);
+    }
+}, [isLoaded, isSignedIn, user, router]);
 
     const selectedGradeOption = GRADE_OPTIONS.find(g => g.value === selectedGrade);
 
