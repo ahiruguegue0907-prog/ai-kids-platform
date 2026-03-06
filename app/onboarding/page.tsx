@@ -430,33 +430,6 @@ const handleSaveProfile = async () => {
   }
 };
 
-    const childData: ChildData = {
-      id: editingIndex !== null ? childrenList[editingIndex].id : Date.now().toString(),
-      name: childName.trim(),
-      title: 'くん',
-      icon: selectedGradeOption.emoji,
-      grade: selectedGrade,
-    };
-
-    try {
-      // Clerk メタデータを更新（最後に保存したプロフィールが代表になる）
-      await updateClerkMetadata(childProfile);
-
-      // ストレージに保存
-      const oldName = editingIndex !== null ? childrenList[editingIndex].name : undefined;
-      saveChildToStorage(childData, oldName);
-
-      // アクティブな子として設定
-      setActiveChild(childData);
-
-      setMode('settings');
-    } catch {
-      setError('保存中にエラーが起きました。もう一度お試しください。');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
 const handleSubmitOnboarding = async () => {
   if (!validateForm() || !selectedGradeOption || !user) return;
   setIsSubmitting(true);
