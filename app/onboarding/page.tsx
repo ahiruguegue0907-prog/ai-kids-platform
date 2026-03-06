@@ -357,7 +357,7 @@ const handleDeleteChild = async (index: number) => {
                   </div>
                 ) : (
                   <div className="flex items-center gap-3">
-                    <div className="text-3xl" style={{ backgroundColor: gradeOption?.color || '#f3f4f6' }} className="text-3xl w-12 h-12 rounded-full flex items-center justify-center">
+                   <div style={{ backgroundColor: gradeOption?.color || '#f3f4f6' }} className="text-3xl w-12 h-12 rounded-full flex items-center justify-center">
                       {child.icon}
                     </div>
                     <div className="flex-1">
