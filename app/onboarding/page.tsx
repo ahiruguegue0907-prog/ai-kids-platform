@@ -302,19 +302,25 @@ const updateClerkProfiles = async (children: ChildData[]) => {
     setMode('add');
   };
 
-  const handleDeleteChild = (index: number) => {
-    const child = childrenList[index];
-    // 現在アクティブな子を削除する場合、sessionStorageもクリア
-    const currentName = sessionStorage.getItem('currentChildName');
-    if (currentName === child.name) {
-      sessionStorage.removeItem('currentChildName');
-      sessionStorage.removeItem('currentChildTitle');
-      sessionStorage.removeItem('currentChildGrade');
-      sessionStorage.removeItem('currentChildIcon');
-    }
-    deleteChildFromStorage(index);
-    setShowDeleteConfirm(null);
-  };
+const handleDeleteChild = async (index: number) => {
+  const child = childrenList[index];
+  const currentName = sessionStorage.getItem('currentChildName');
+  if (currentName === child.name) {
+    sessionStorage.removeItem('currentChildName');
+    sessionStorage.removeItem('currentChildTitle');
+    sessionStorage.removeItem('currentChildGrade');
+    sessionStorage.removeItem('currentChildIcon');
+  }
+  deleteChildFromStorage(index);
+
+  // Clerk も更新
+  const remaining = childrenList.filter((_, i) => i !== index);
+  try {
+    await updateClerkProfiles(remaining);
+  } catch { /* ignore */ }
+
+  setShowDeleteConfirm(null);
+};
 
   const renderSettings = () => (
     <div className="space-y-5">
