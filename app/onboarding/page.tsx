@@ -54,31 +54,62 @@ export default function ParentOnboardingPage() {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<number | null>(null);
 
-  // 初期化
-  useEffect(() => {
-    if (isLoaded && isSignedIn) {
-      const params = new URLSearchParams(window.location.search);
-      const isSettingsMode = params.get('mode') === 'settings';
+useEffect(() => {
+  if (isLoaded && isSignedIn) {
+    const params = new URLSearchParams(window.location.search);
+    const isSettingsMode = params.get('mode') === 'settings';
 
-      // localStorage から子どもリストを読み込み
-      const stored = localStorage.getItem('allChildren');
-      let children: ChildData[] = [];
-      try { children = stored ? JSON.parse(stored) : []; } catch (_) { /* ignore */ }
-      setChildrenList(children);
+    // localStorage から子どもリストを読み込み
+    const stored = localStorage.getItem('allChildren');
+    let children: ChildData[] = [];
+    try { children = stored ? JSON.parse(stored) : []; } catch (_) { /* ignore */ }
 
-      if (isSettingsMode) {
-        setMode('settings');
+    // localStorage が空なら Clerk から復元
+    if (children.length === 0) {
+      const meta = user?.unsafeMetadata;
+      // 新形式（配列）
+      const profiles = meta?.childProfiles as ChildProfile[] | undefined;
+      if (profiles && Array.isArray(profiles) && profiles.length > 0) {
+        children = profiles.map((p, i) => ({
+          id: `clerk-${i}`,
+          name: p.name,
+          title: 'くん',
+          icon: p.emoji,
+          grade: p.grade,
+        }));
       } else {
-        const completed = user?.unsafeMetadata?.onboardingCompleted;
-        if (completed) {
-          router.push('/chat');
-        } else {
-          setMode('onboarding');
-          setCurrentStep(1);
+        // 旧形式（単一オブジェクト）からの移行
+        const single = meta?.childProfile as ChildProfile | undefined;
+        if (single && single.name) {
+          children = [{
+            id: 'clerk-0',
+            name: single.name,
+            title: 'くん',
+            icon: single.emoji,
+            grade: single.grade,
+          }];
         }
       }
+      if (children.length > 0) {
+        localStorage.setItem('allChildren', JSON.stringify(children));
+      }
     }
-  }, [isLoaded, isSignedIn, user, router]);
+
+    setChildrenList(children);
+
+    if (isSettingsMode) {
+      setMode('settings');
+    } else {
+      const completed = user?.unsafeMetadata?.onboardingCompleted;
+      if (completed) {
+        router.push('/chat');
+      } else {
+        setMode('onboarding');
+        setCurrentStep(1);
+      }
+    }
+  }
+}, [isLoaded, isSignedIn, user, router]);
 
   const selectedGradeOption = GRADE_OPTIONS.find(g => g.value === selectedGrade);
 
