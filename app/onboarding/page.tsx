@@ -398,17 +398,31 @@ const updateClerkProfiles = async (children: ChildData[]) => {
     setError(''); return true;
   };
 
-  const handleSaveProfile = async () => {
-    if (!validateForm() || !selectedGradeOption || !user) return;
-    setIsSubmitting(true);
-    setError('');
+const handleSaveProfile = async () => {
+  if (!validateForm() || !selectedGradeOption || !user) return;
+  setIsSubmitting(true);
+  setError('');
 
-    const childProfile: ChildProfile = {
-      name: childName.trim(),
-      grade: selectedGrade,
-      emoji: selectedGradeOption.emoji,
-      color: selectedGradeOption.color,
-    };
+  const childData: ChildData = {
+    id: editingIndex !== null ? childrenList[editingIndex].id : Date.now().toString(),
+    name: childName.trim(),
+    title: 'くん',
+    icon: selectedGradeOption.emoji,
+    grade: selectedGrade,
+  };
+
+  try {
+    const oldName = editingIndex !== null ? childrenList[editingIndex].name : undefined;
+    const updatedChildren = saveChildToStorage(childData, oldName);
+    await updateClerkProfiles(updatedChildren);
+    setActiveChild(childData);
+    setMode('settings');
+  } catch {
+    setError('保存中にエラーが起きました。もう一度お試しください。');
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
     const childData: ChildData = {
       id: editingIndex !== null ? childrenList[editingIndex].id : Date.now().toString(),
