@@ -118,18 +118,27 @@ export default function ParentOnboardingPage() {
     sessionStorage.setItem('currentChildIcon', child.icon);
   };
 
-  // ── Clerk メタデータ更新
-  const updateClerkMetadata = async (childProfile: ChildProfile) => {
-    if (!user) return;
-    await user.update({
-      unsafeMetadata: {
-        ...user.unsafeMetadata,
-        childProfile,
-        onboardingCompleted: true,
-        onboardingCompletedAt: new Date().toISOString(),
-      },
-    });
-  };
+// ── Clerk メタデータ更新（複数プロフィール対応）
+const updateClerkProfiles = async (children: ChildData[]) => {
+  if (!user) return;
+  const profiles: ChildProfile[] = children.map(c => {
+    const gradeOpt = GRADE_OPTIONS.find(g => g.value === c.grade);
+    return {
+      name: c.name,
+      grade: c.grade,
+      emoji: gradeOpt?.emoji || c.icon,
+      color: gradeOpt?.color || '#E3F2FD',
+    };
+  });
+  await user.update({
+    unsafeMetadata: {
+      ...user.unsafeMetadata,
+      childProfiles: profiles,
+      onboardingCompleted: true,
+      onboardingCompletedAt: new Date().toISOString(),
+    },
+  });
+};
 
   // ── ステップインジケーター
   const StepIndicator = () => (
