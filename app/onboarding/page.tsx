@@ -451,37 +451,30 @@ const handleSaveProfile = async () => {
     }
   };
 
-  const handleSubmitOnboarding = async () => {
-    if (!validateForm() || !selectedGradeOption || !user) return;
-    setIsSubmitting(true);
-    setError('');
+const handleSubmitOnboarding = async () => {
+  if (!validateForm() || !selectedGradeOption || !user) return;
+  setIsSubmitting(true);
+  setError('');
 
-    const childProfile: ChildProfile = {
-      name: childName.trim(),
-      grade: selectedGrade,
-      emoji: selectedGradeOption.emoji,
-      color: selectedGradeOption.color,
-    };
-
-    const childData: ChildData = {
-      id: Date.now().toString(),
-      name: childName.trim(),
-      title: 'くん',
-      icon: selectedGradeOption.emoji,
-      grade: selectedGrade,
-    };
-
-    try {
-      await updateClerkMetadata(childProfile);
-      saveChildToStorage(childData);
-      setActiveChild(childData);
-      setCurrentStep(2);
-    } catch {
-      setError('保存中にエラーが起きました。もう一度お試しください。');
-    } finally {
-      setIsSubmitting(false);
-    }
+  const childData: ChildData = {
+    id: Date.now().toString(),
+    name: childName.trim(),
+    title: 'くん',
+    icon: selectedGradeOption.emoji,
+    grade: selectedGrade,
   };
+
+  try {
+    const updatedChildren = saveChildToStorage(childData);
+    await updateClerkProfiles(updatedChildren);
+    setActiveChild(childData);
+    setCurrentStep(2);
+  } catch {
+    setError('保存中にエラーが起きました。もう一度お試しください。');
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   const renderEditForm = () => (
     <div className="space-y-6">
