@@ -1,18 +1,5 @@
-import {
-    collection,
-    doc,
-    addDoc,
-    getDoc,
-    getDocs,
-    updateDoc,
-    query,
-    where,
-    orderBy,
-    limit,
-    serverTimestamp,
-    Timestamp,
-} from "firebase/firestore";
-import { db } from "./firebase";
+import { getAdminDb } from "./firebase-admin";
+import { FieldValue, Timestamp } from "firebase-admin/firestore";
 
 // ============================================
 // 型定義
@@ -21,7 +8,7 @@ import { db } from "./firebase";
 export interface ChatMessage {
     role: "user" | "assistant";
     content: string;
-    timestamp: Timestamp | ReturnType<typeof serverTimestamp>;
+    timestamp: Timestamp | FieldValue;
     safetyFlag?: string | null;
 }
 
@@ -30,8 +17,8 @@ export interface ChatSession {
     profileName: string;
     profileTitle: string;
     grade: string;
-    startedAt: Timestamp | ReturnType<typeof serverTimestamp>;
-    endedAt?: Timestamp | ReturnType<typeof serverTimestamp> | null;
+    startedAt: Timestamp | FieldValue;
+    endedAt?: Timestamp | FieldValue | null;
     messageCount: number;
     topics: string[];
     summary: string | null;
@@ -53,13 +40,14 @@ export async function createChatSession(
     profileTitle: string,
     grade: string
 ): Promise<string> {
-    const sessionsRef = collection(db, "users", clerkUserId, "sessions");
-    const sessionDoc = await addDoc(sessionsRef, {
+    const db = getAdminDb();
+    const sessionsRef = db.collection("users").doc(clerkUserId).collection("sessions");
+    const sessionDoc = await sessionsRef.add({
         profileId,
         profileName,
         profileTitle,
         grade,
-        startedAt: serverTimestamp(),
+        startedAt: FieldValue.serverTimestamp(),
         endedAt: null,
         messageCount: 0,
         topics: [],
@@ -81,28 +69,31 @@ export async function addMessageToSession(
     content: string,
     safetyFlag?: string | null
 ): Promise<void> {
+    const db = getAdminDb();
     // メッセージをサブコレクションに追加
-    const messagesRef = collection(
-        db,
-        "users",
-        clerkUserId,
-        "sessions",
-        sessionId,
-        "messages"
-    );
-    await addDoc(messagesRef, {
+    const messagesRef = db
+        .collection("users")
+        .doc(clerkUserId)
+        .collection("sessions")
+        .doc(sessionId)
+        .collection("messages");
+    await messagesRef.add({
         role,
         content,
-        timestamp: serverTimestamp(),
+        timestamp: FieldValue.serverTimestamp(),
         safetyFlag: safetyFlag || null,
     });
 
     // セッションのメッセージ数を更新
-    const sessionRef = doc(db, "users", clerkUserId, "sessions", sessionId);
-    const sessionSnap = await getDoc(sessionRef);
-    if (sessionSnap.exists()) {
-        const currentCount = sessionSnap.data().messageCount || 0;
-        await updateDoc(sessionRef, {
+    const sessionRef = db
+        .collection("users")
+        .doc(clerkUserId)
+        .collection("sessions")
+        .doc(sessionId);
+    const sessionSnap = await sessionRef.get();
+    if (sessionSnap.exists) {
+        const currentCount = sessionSnap.data()?.messageCount || 0;
+        await sessionRef.update({
             messageCount: currentCount + 1,
         });
     }
@@ -118,9 +109,14 @@ export async function endChatSession(
     topics: string[],
     highlightMessage: string | null
 ): Promise<void> {
-    const sessionRef = doc(db, "users", clerkUserId, "sessions", sessionId);
-    await updateDoc(sessionRef, {
-        endedAt: serverTimestamp(),
+    const db = getAdminDb();
+    const sessionRef = db
+        .collection("users")
+        .doc(clerkUserId)
+        .collection("sessions")
+        .doc(sessionId);
+    await sessionRef.update({
+        endedAt: FieldValue.serverTimestamp(),
         isActive: false,
         summary,
         topics,
@@ -140,15 +136,14 @@ export async function getRecentSessions(
     profileId: string,
     maxResults: number = 20
 ): Promise<(ChatSession & { id: string })[]> {
-    const sessionsRef = collection(db, "users", clerkUserId, "sessions");
-    const q = query(
-        sessionsRef,
-        where("profileId", "==", profileId),
-        orderBy("startedAt", "desc"),
-        limit(maxResults)
-    );
+    const db = getAdminDb();
+    const sessionsRef = db.collection("users").doc(clerkUserId).collection("sessions");
+    const snapshot = await sessionsRef
+        .where("profileId", "==", profileId)
+        .orderBy("startedAt", "desc")
+        .limit(maxResults)
+        .get();
 
-    const snapshot = await getDocs(q);
     return snapshot.docs.map((docSnap) => ({
         id: docSnap.id,
         ...(docSnap.data() as ChatSession),
@@ -162,17 +157,15 @@ export async function getSessionMessages(
     clerkUserId: string,
     sessionId: string
 ): Promise<(ChatMessage & { id: string })[]> {
-    const messagesRef = collection(
-        db,
-        "users",
-        clerkUserId,
-        "sessions",
-        sessionId,
-        "messages"
-    );
-    const q = query(messagesRef, orderBy("timestamp", "asc"));
+    const db = getAdminDb();
+    const messagesRef = db
+        .collection("users")
+        .doc(clerkUserId)
+        .collection("sessions")
+        .doc(sessionId)
+        .collection("messages");
+    const snapshot = await messagesRef.orderBy("timestamp", "asc").get();
 
-    const snapshot = await getDocs(q);
     return snapshot.docs.map((docSnap) => ({
         id: docSnap.id,
         ...(docSnap.data() as ChatMessage),

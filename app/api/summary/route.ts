@@ -1,7 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { NextRequest, NextResponse } from "next/server";
-import { collection, query, orderBy, getDocs, doc, updateDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { getAdminDb } from "@/lib/firebase-admin";
+import { FieldValue } from "firebase-admin/firestore";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 
@@ -20,16 +20,14 @@ export async function POST(req: NextRequest) {
         }
 
         // ===== 1. Firestoreからメッセージを取得 =====
-        const messagesRef = collection(
-            db,
-            "users",
-            clerkUserId,
-            "sessions",
-            sessionId,
-            "messages"
-        );
-        const q = query(messagesRef, orderBy("timestamp", "asc"));
-        const snapshot = await getDocs(q);
+        const db = getAdminDb();
+        const messagesRef = db
+            .collection("users")
+            .doc(clerkUserId)
+            .collection("sessions")
+            .doc(sessionId)
+            .collection("messages");
+        const snapshot = await messagesRef.orderBy("timestamp", "asc").get();
 
         if (snapshot.empty) {
             return NextResponse.json(
@@ -89,13 +87,17 @@ ${conversationText}
         }
 
         // ===== 3. Firestoreのセッションを更新 =====
-        const sessionRef = doc(db, "users", clerkUserId, "sessions", sessionId);
-        await updateDoc(sessionRef, {
+        const sessionRef = db
+            .collection("users")
+            .doc(clerkUserId)
+            .collection("sessions")
+            .doc(sessionId);
+        await sessionRef.update({
             summary: parsed.summary,
             topics: parsed.topics,
             highlightMessage: parsed.highlightMessage,
             isActive: false,
-            endedAt: new Date(),
+            endedAt: FieldValue.serverTimestamp(),
         });
 
         return NextResponse.json({

@@ -54,6 +54,7 @@ export default function ParentOnboardingPage() {
   const [childrenList, setChildrenList] = useState<ChildData[]>([]);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<number | null>(null);
+  const [hasConsented, setHasConsented] = useState(false);
 
   // 初期化
   useEffect(() => {
@@ -103,6 +104,7 @@ export default function ParentOnboardingPage() {
           router.push('/chat');
         } else {
           setMode('onboarding');
+          setHasConsented(!!user?.unsafeMetadata?.consentedAt);
           setCurrentStep(1);
         }
       }
@@ -196,11 +198,10 @@ export default function ParentOnboardingPage() {
           <button
             key={title}
             onClick={() => setSelectedTitle(title)}
-            className={`flex-1 py-3 rounded-xl border-2 text-center font-bold transition-all duration-200 ${
-              selectedTitle === title
-                ? 'border-purple-500 bg-purple-50 text-purple-700 shadow-md scale-105'
-                : 'border-gray-200 bg-white text-gray-600 hover:border-purple-300'
-            }`}
+            className={`flex-1 py-3 rounded-xl border-2 text-center font-bold transition-all duration-200 ${selectedTitle === title
+              ? 'border-purple-500 bg-purple-50 text-purple-700 shadow-md scale-105'
+              : 'border-gray-200 bg-white text-gray-600 hover:border-purple-300'
+              }`}
           >
             {childName || '○○'}{title}
           </button>
@@ -536,57 +537,132 @@ export default function ParentOnboardingPage() {
   // ─────────────────────────────────────────────────────────
   // STEP 1（初回オンボーディング用）
   // ─────────────────────────────────────────────────────────
-  const renderStep1 = () => (
-    <div className="space-y-6">
+  // 同意画面（STEP 1 の前に表示）
+  // ─────────────────────────────────────────────────────────
+  const handleConsent = async () => {
+    if (!user) return;
+    setIsSubmitting(true);
+    try {
+      setError('');  //
+      await user.update({
+        unsafeMetadata: {
+          ...user.unsafeMetadata,
+          consentedAt: new Date().toISOString(),
+        },
+      });
+      setHasConsented(true);
+    } catch {
+      setError('同意の保存中にエラーが起きました。もう一度お試しください。');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const renderConsent = () => (
+    <div className="space-y-5">
       <div className="text-center mb-4">
-        <div className="text-5xl mb-3">👶</div>
-        <h2 className="text-xl font-bold text-gray-800">お子さまのことを教えてください</h2>
-        <p className="text-sm text-gray-500 mt-1">あとでいつでも変更できます</p>
+        <div className="text-5xl mb-3">📋</div>
+        <h2 className="text-xl font-bold text-gray-800">ご利用にあたって</h2>
+        <p className="text-sm text-gray-500 mt-1">お子さまの安全のため、以下をご確認ください</p>
       </div>
 
-      <div>
-        <label className="block text-sm font-semibold text-gray-700 mb-2">お子さまのお名前（ニックネームでもOK）</label>
-        <input type="text" value={childName} onChange={(e) => { setChildName(e.target.value); setError(''); }} placeholder="例：たろう、はなちゃん" maxLength={20} className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-purple-400 focus:outline-none text-gray-800" />
-        <p className="text-xs text-gray-400 mt-1 text-right">{childName.length}/20文字</p>
-      </div>
-
-      <TitleSelector />
-
-      <div>
-        <label className="block text-sm font-semibold text-gray-700 mb-3">学年を選んでください</label>
-        <div className="mb-4">
-          <p className="text-xs font-bold text-orange-500 mb-2">🌸 幼稚園・保育園</p>
-          <div className="grid grid-cols-3 gap-2">
-            {GRADE_OPTIONS.filter(g => g.group === '幼児').map((grade) => (
-              <button key={grade.value} onClick={() => { setSelectedGrade(grade.value); setError(''); }}
-                className={`p-3 rounded-xl border-2 text-center transition-all duration-200 ${selectedGrade === grade.value ? 'border-purple-500 bg-purple-50 shadow-md scale-105' : 'border-gray-200 bg-white hover:border-purple-300'}`}>
-                <div className="text-2xl mb-1">{grade.emoji}</div>
-                <div className="text-xs font-semibold text-gray-700">{grade.value}</div>
-              </button>
-            ))}
-          </div>
-        </div>
+      <div className="bg-gray-50 rounded-2xl p-5 space-y-4 text-sm text-gray-700 leading-relaxed">
         <div>
-          <p className="text-xs font-bold text-blue-500 mb-2">📚 小学校</p>
-          <div className="grid grid-cols-3 gap-2">
-            {GRADE_OPTIONS.filter(g => g.group === '小学校').map((grade) => (
-              <button key={grade.value} onClick={() => { setSelectedGrade(grade.value); setError(''); }}
-                className={`p-3 rounded-xl border-2 text-center transition-all duration-200 ${selectedGrade === grade.value ? 'border-purple-500 bg-purple-50 shadow-md scale-105' : 'border-gray-200 bg-white hover:border-purple-300'}`}>
-                <div className="text-2xl mb-1">{grade.emoji}</div>
-                <div className="text-xs font-semibold text-gray-700">{grade.value}</div>
-              </button>
-            ))}
-          </div>
+          <p className="font-bold text-gray-800 mb-1">🤖 AIせんせいについて</p>
+          <p>本サービスは現在テスト段階（ベータ版）です。AIせんせいはAI（人工知能）を使ったプログラムです。人間の先生ではありません。回答が不正確な場合や、お子さまの意図と異なる応答をする場合があります。</p>
+        </div>
+
+        <div>
+          <p className="font-bold text-gray-800 mb-1">👨‍👩‍👧 保護者の方へのお願い</p>
+          <p>本サービスは保護者の監督のもとでのご利用を前提としています。お子さまの利用状況を定期的にご確認ください。</p>
+        </div>
+
+        <div>
+          <p className="font-bold text-gray-800 mb-1">🔒 お子さまの情報について</p>
+          <p>会話内容はサービス提供のために保存されます。お子さまの個人情報（本名・住所・学校名など）は入力しないようお子さまにお伝えください。</p>
+        </div>
+
+        <div>
+          <p className="font-bold text-gray-800 mb-1">🛡️ データの取り扱い</p>
+          <p>お子さまとAIの会話データがAIの学習に使用されることはありません。お子さまの安全に関わる状況では、保護者の方に通知する場合があります。</p>
+        </div>
+
+        <div>
+          <p className="font-bold text-gray-800 mb-1">⚠️ 安全機能について</p>
+          <p>危険な内容の検知・遮断機能を搭載していますが、完全ではありません。お子さまがAIとの会話で不安を感じた場合は、保護者の方にご相談いただくようお伝えください。</p>
         </div>
       </div>
 
       {error && <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-600">⚠️ {error}</div>}
 
-      <button onClick={handleSubmitOnboarding} disabled={isSubmitting} className="w-full py-4 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold text-base shadow-md hover:shadow-lg active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed">
-        {isSubmitting ? '⏳ 保存中...' : 'これではじめる！ 🎉'}
+      <button
+        onClick={handleConsent}
+        disabled={isSubmitting}
+        className="w-full py-4 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold text-base shadow-md hover:shadow-lg active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+      >
+        {isSubmitting ? '⏳ 処理中...' : '上記を確認し、同意して進む ✓'}
       </button>
+
+      <p className="text-center text-xs text-gray-400">
+        同意いただくと、お子さまのプロフィール設定に進みます
+      </p>
     </div>
   );
+
+  const renderStep1 = () => {
+    if (!hasConsented) return renderConsent();
+    return (
+      <div className="space-y-6">
+        <div className="text-center mb-4">
+          <div className="text-5xl mb-3">👶</div>
+          <h2 className="text-xl font-bold text-gray-800">お子さまのことを教えてください</h2>
+          <p className="text-sm text-gray-500 mt-1">あとでいつでも変更できます</p>
+        </div>
+
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">お子さまのお名前（ニックネームでもOK）</label>
+          <input type="text" value={childName} onChange={(e) => { setChildName(e.target.value); setError(''); }} placeholder="例：たろう、はなちゃん" maxLength={20} className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-purple-400 focus:outline-none text-gray-800" />
+          <p className="text-xs text-gray-400 mt-1 text-right">{childName.length}/20文字</p>
+        </div>
+
+        <TitleSelector />
+
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-3">学年を選んでください</label>
+          <div className="mb-4">
+            <p className="text-xs font-bold text-orange-500 mb-2">🌸 幼稚園・保育園</p>
+            <div className="grid grid-cols-3 gap-2">
+              {GRADE_OPTIONS.filter(g => g.group === '幼児').map((grade) => (
+                <button key={grade.value} onClick={() => { setSelectedGrade(grade.value); setError(''); }}
+                  className={`p-3 rounded-xl border-2 text-center transition-all duration-200 ${selectedGrade === grade.value ? 'border-purple-500 bg-purple-50 shadow-md scale-105' : 'border-gray-200 bg-white hover:border-purple-300'}`}>
+                  <div className="text-2xl mb-1">{grade.emoji}</div>
+                  <div className="text-xs font-semibold text-gray-700">{grade.value}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="text-xs font-bold text-blue-500 mb-2">📚 小学校</p>
+            <div className="grid grid-cols-3 gap-2">
+              {GRADE_OPTIONS.filter(g => g.group === '小学校').map((grade) => (
+                <button key={grade.value} onClick={() => { setSelectedGrade(grade.value); setError(''); }}
+                  className={`p-3 rounded-xl border-2 text-center transition-all duration-200 ${selectedGrade === grade.value ? 'border-purple-500 bg-purple-50 shadow-md scale-105' : 'border-gray-200 bg-white hover:border-purple-300'}`}>
+                  <div className="text-2xl mb-1">{grade.emoji}</div>
+                  <div className="text-xs font-semibold text-gray-700">{grade.value}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {error && <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-600">⚠️ {error}</div>}
+
+        <button onClick={handleSubmitOnboarding} disabled={isSubmitting} className="w-full py-4 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold text-base shadow-md hover:shadow-lg active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed">
+          {isSubmitting ? '⏳ 保存中...' : 'これではじめる！ 🎉'}
+        </button>
+      </div>
+    );
+  };
 
   // ─────────────────────────────────────────────────────────
   // STEP 2 ： 完了

@@ -79,6 +79,7 @@ export default function ChatPage() {
     const [childIcon, setChildIcon] = useState<string>('🐶');
     const [childGrade, setChildGrade] = useState<string>('');
     const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+    const [isReadAloud, setIsReadAloud] = useState(false);
 
     const [messages, setMessages] = useState<{ id: string; text: string; sender: 'user' | 'ai' }[]>([]);
     const [inputValue, setInputValue] = useState('');
@@ -227,7 +228,10 @@ export default function ChatPage() {
     useEffect(() => {
         setMessages(prev => {
             if (prev.length <= 1) {
-                return [{ id: 'init', text: initialAiMessage, sender: 'ai' }];
+                return [
+                    { id: 'init', text: initialAiMessage, sender: 'ai' },
+                    { id: 'ai-disclosure', text: 'AIせんせいはプログラムです。にんげんではないので、まちがえることもあるよ。こまったことがあったら、おうちのにそうだんしてね。', sender: 'ai' },
+                ];
             }
             return prev;
         });
@@ -289,6 +293,21 @@ export default function ChatPage() {
                 sender: 'ai',
             }]);
             setAiEmotion('happy');
+            // よみあげ処理
+            if (isReadAloud && typeof window !== "undefined" && "speechSynthesis" in window) {
+                const plainText = aiReply
+                    .replace(/<ruby>([^<]*)<rt>([^<]*)<\/rt><\/ruby>/g, "$1")
+                    .replace(/<[^>]*>/g, "")
+                    .replace(/[\u{1F000}-\u{1FFFF}|\u{2600}-\u{27BF}|\u{FE00}-\u{FEFF}|\u{1F900}-\u{1F9FF}|\u{2700}-\u{27BF}|\u{E000}-\u{F8FF}|\u{200D}|\u{20E3}|\u{FE0F}|\u{D83C}-\u{DBFF}|\u{DC00}-\u{DFFF}]/gu, "")
+                    .trim();
+                if (plainText) {
+                    const utterance = new SpeechSynthesisUtterance(plainText);
+                    utterance.lang = "ja-JP";
+                    utterance.rate = 0.9;
+                    speechSynthesis.cancel();
+                    speechSynthesis.speak(utterance);
+                }
+            }
 
         } catch (_) {
             setMessages(prev => [...prev, {
@@ -470,6 +489,22 @@ export default function ChatPage() {
 
             {/* ── 入力フッター ───────────────────────────────────── */}
             <footer className="fixed bottom-0 w-full bg-white/80 backdrop-blur-md border-t border-gray-200 p-4 pb-6 sm:pb-4 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+                <div className="max-w-4xl mx-auto flex justify-end px-2 pt-1">
+                    <button
+                        onClick={() => {
+                            setIsReadAloud(prev => {
+                                if (prev) speechSynthesis.cancel();
+                                return !prev;
+                            });
+                        }}
+                        className={`text-xs px-3 py-1 rounded-full border transition-colors ${isReadAloud
+                            ? "bg-purple-100 border-purple-400 text-purple-700"
+                            : "bg-gray-100 border-gray-300 text-gray-500"
+                            }`}
+                    >
+                        {isReadAloud ? "🔊 よみあげ ON" : "🔇 よみあげ OFF"}
+                    </button>
+                </div>
                 <div className="max-w-4xl mx-auto flex gap-3">
                     <input
                         type="text"

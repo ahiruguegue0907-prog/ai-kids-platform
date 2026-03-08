@@ -13,6 +13,7 @@
     "@google/genai": "^1.43.0",
     "@google/generative-ai": "^0.24.1",
     "firebase": "^12.10.0",
+    "firebase-admin": "^13.7.0",
     "framer-motion": "^12.34.3",
     "kuromoji": "^0.1.2",
     "lucide-react": "^0.575.0",
